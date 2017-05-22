@@ -1,0 +1,26 @@
+{
+  "name": "ng-rds",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jgdijk/ng-rds"
+  },
+  "author": {
+    "name": "Jeroen Grasdijk",
+    "email": "contact@jgdijk.com"
+  },
+  "keywords": [
+    "angular"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jgdijk/ng-rds/issues"
+  },
+  "module": "ng-rds.js",
+  "typings": "ng-rds.d.ts",
+  "peerDependencies": {
+    "@angular/core": "^4.0.0",
+    "rxjs": "^5.1.0",
+    "zone.js": "^0.8.4"
+  }
+}

@@ -1,0 +1,60 @@
+import {vault} from "../vault/vault";
+
+export type ModelRelation = {
+    type: string,
+    model: any
+    relationId?: string
+}
+
+export type ModelConfigRelation = {
+    [key: string]: ModelRelation;
+}
+
+export interface ModelConfig {
+    name?: string,
+    model: any //todo make this in een extended model type?
+    primaryKey?: string
+    relations?: {
+        [key: string]: ModelRelation;
+    };
+}
+
+
+export class Model{
+
+    constructor(data: any){
+        Object.assign(this, data);
+    }
+
+    public save(): void{
+        let name = this.constructor.name;
+        vault.add(name, this);
+    };
+
+    public update(data: any): void {
+        let name = this.constructor.name;
+        vault.update(name, this[vault.get(name).primaryKey], data);
+    }
+
+    public remove(): void {
+        vault.remove(this.constructor.name, this[vault.get(this.constructor.name).primaryKey])
+    }
+
+    public attach(relation: string, ids: number | number[]) {
+        vault.attach(
+            this.constructor.name,
+            this[vault.get(this.constructor.name).primaryKey],
+            relation,
+            ids
+        );
+    }
+
+    public detach(relation: string, ids: string | number | number[]) {
+        vault.detach(
+            this.constructor.name,
+            this[vault.get(this.constructor.name).primaryKey],
+            relation,
+            ids
+        );
+    }
+}
