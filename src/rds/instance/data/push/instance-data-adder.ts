@@ -70,7 +70,7 @@ export class InstanceDataAdder {
         }
 
         //filters all the parent data on set where conditions
-        data[key] = this.data.whereStatementCollector.filter(data[key]);
+        data[key] = this.data.whereStatementController.filter(data[key]);
 
         //if by this point we have no results anymore move on
         if (!data[key].length) return data;
@@ -81,7 +81,7 @@ export class InstanceDataAdder {
         //we add the remaining objects to the actual data
         let model = vault.get(key).model;
         for (let obj of data[key]) {
-            this.data.push(this.data.joinStatementCollector.attach(new model(obj)));
+            this.data.push(this.data.joinStatementController.attach(new model(obj)));
         }
 
         delete data[key]; //todo here should be an if when the target key is also used as a deeply nested relation

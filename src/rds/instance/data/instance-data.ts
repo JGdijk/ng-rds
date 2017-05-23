@@ -15,16 +15,16 @@ export class InstanceData {
     public isInitiated: boolean = false;
 
     /** all the statements */
-    public whereStatementCollector: WhereStatementController;
-    public joinStatementCollector: JoinStatementController;
-    public orderByStatementCollector: OrderByStatementController;
+    public whereStatementController: WhereStatementController;
+    public joinStatementController: JoinStatementController;
+    public orderByStatementController: OrderByStatementController;
 
     constructor(key: string) {
         this.key = key;
 
-        this.whereStatementCollector = new WhereStatementController();
-        this.joinStatementCollector = new JoinStatementController(this.key);
-        this.orderByStatementCollector = new OrderByStatementController();
+        this.whereStatementController = new WhereStatementController(this.key);
+        this.joinStatementController = new JoinStatementController(this.key);
+        this.orderByStatementController = new OrderByStatementController();
     }
 
     public setIds(ids: number | number[] = null): void {
@@ -54,7 +54,7 @@ export class InstanceData {
 
         let objects: any[] = this.fetchFromStore();
 
-        objects = this.whereStatementCollector.filter(objects);
+        objects = this.whereStatementController.filter(objects);
 
         let primaryKey = vault.get(this.key).primaryKey;
         let ids: number[] = [];
@@ -70,7 +70,7 @@ export class InstanceData {
 
         let objects: any[] = this.fetchFromStore();
 
-        objects = this.whereStatementCollector.filter(objects);
+        objects = this.whereStatementController.filter(objects);
 
         let primaryKey = vault.get(this.key).primaryKey;
         let ids: number[] = [];
@@ -99,7 +99,7 @@ export class InstanceData {
 
     public hasKey(key?: string): boolean {
         if (key === this.key) return true;
-        return (this.joinStatementCollector.has(key));
+        return (this.joinStatementController.has(key));
     }
 
     public hasIds(): boolean {
@@ -113,14 +113,14 @@ export class InstanceData {
     private init(): void {
         let data = this.fetchFromStore();
 
-        if (this.whereStatementCollector.has()) {
-            data = this.whereStatementCollector.filter(data);
+        if (this.whereStatementController.has()) {
+            data = this.whereStatementController.filter(data);
         }
 
         data = this.makeInstances(data);
 
-        if (this.joinStatementCollector.has()) {
-            data = this.joinStatementCollector.attach(data)
+        if (this.joinStatementController.has()) {
+            data = this.joinStatementController.attach(data)
         }
 
         this.data = data;
@@ -134,7 +134,7 @@ export class InstanceData {
     }
 
     public order() {
-        this.data = this.orderByStatementCollector.init(this.data);
+        this.data = this.orderByStatementController.init(this.data);
     }
 
 

@@ -54,7 +54,7 @@ export class InstanceDataDetacher {
         if (!data.hasOwnProperty(this.data.key)) return false;
 
         for (let key in data[this.data.key]) {
-            if (this.data.joinStatementCollector.has(key)) return true;
+            if (this.data.joinStatementController.has(key)) return true;
         }
 
         return false;
@@ -64,7 +64,7 @@ export class InstanceDataDetacher {
         data = data[this.data.key];
 
         for (let key in data) {
-            if (!this.data.joinStatementCollector.has(key)) delete data[key];
+            if (!this.data.joinStatementController.has(key)) delete data[key];
         }
 
         return data;

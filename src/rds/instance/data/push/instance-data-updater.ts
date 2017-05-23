@@ -69,7 +69,7 @@ export class InstanceDataUpdater {
 
         //if not in where anymore since the update delete
         for (let i in data) {
-            if (this.data.whereStatementCollector.check(data[i])) continue;
+            if (this.data.whereStatementController.check(data[i])) continue;
             delete data[i];
         }
 
@@ -151,9 +151,9 @@ export class InstanceDataUpdater {
     }
 
     private transferRelations(data: any[]): any[] {
-        if (!this.data.joinStatementCollector.has()) return data;
+        if (!this.data.joinStatementController.has()) return data;
 
-        let keys: string[] = this.data.joinStatementCollector.objectKeys();
+        let keys: string[] = this.data.joinStatementController.objectKeys();
         let primaryKey: string = vault.get(this.data.key).primaryKey;
 
         // we compare every instance object against the to be added object

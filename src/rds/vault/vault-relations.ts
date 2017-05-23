@@ -85,6 +85,7 @@ export class VaultRelations {
             objectKey: objectKey,
             relationKey: relation.relationId
         };
+        console.log(relation_object)
 
         // we have to check if a reversed relation(dull) has been set already, if so we activate instead of add
         if (!this.relations[name]) {

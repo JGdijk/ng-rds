@@ -10,6 +10,8 @@ import {vault} from "../../vault/vault";
 
 export class InstanceDataController {
 
+    public key: string;
+
     private data: InstanceData;
 
     /** add, update and remove classes */
@@ -22,6 +24,7 @@ export class InstanceDataController {
     private observer: boolean;
 
     constructor(key: string) {
+        this.key = key;
         this.data = new InstanceData(key);
 
         this.adder = new InstanceDataAdder(this.data);
@@ -91,17 +94,28 @@ export class InstanceDataController {
     /*************************** add statements ***************************
      ******************************************************************/
 
-    public addWhereStatement(type: string, statement: any): void {
-        this.data.whereStatementCollector.add(type, statement);
+    public addWhereStatement(type: string, statements: any | any[]): void { //todo statement can be type
+        this.data.whereStatementController.add(type, statements);
     }
 
     public addJoinStatement(type: string, statement: any): void {
-        this.data.joinStatementCollector.add(type, statement);
+        this.data.joinStatementController.add(type, statement);
     }
 
     public addOrderByStatement(statement: any): void {
-        this.data.orderByStatementCollector.add(statement);
+        this.data.orderByStatementController.add(statement);
     }
+
+    // /*************************** add statements callback ***************************
+    //  ******************************************************************/
+    //
+    // public addWhereStatementCallback(callback: any): void {
+    //     this.data.whereStatementController.addCallback('where', callback);
+    // }
+    //
+    // public addOrWhereStatementCallback(callback: any): void {
+    //     this.data.whereStatementController.addCallback('orWhere', callback);
+    // }
 
     /*************************** checkers ***************************
      ******************************************************************/
@@ -138,12 +152,12 @@ export class InstanceDataController {
     }
 
     private attachCheck(data: CollectorDataObject): boolean {
-        if (!this.data.joinStatementCollector.has) return false;
+        if (!this.data.joinStatementController.has) return false;
         return this.attacher.run(data);
     }
 
     private detachCheck(data: CollectorDataObject): boolean {
-        if (!this.data.joinStatementCollector.has) return false;
+        if (!this.data.joinStatementController.has) return false;
         return this.detacher.run(data);
     }
 

@@ -5,6 +5,7 @@ import {ModelConfig} from "./rds/model/model";
 
 export * from './rds.service';
 export {ModelConfig, Model} from "./rds/model/model";
+export {WhereCallback} from "./rds/statements/controllers/where-callback"
 
 @NgModule()
 export class RdsModule {

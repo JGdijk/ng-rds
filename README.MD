@@ -136,6 +136,17 @@ The following functions are added to select your models *(more comming)*:
 
 * __where(key, action, value)__
     * action: '=', '<' , '>'
+* __orWhere(key, action, value)__
+
+* __whereIn(key, values) / whereNotIn(key, values)__
+    * values: [1, 2, ...]
+
+* __whereBetween(key, min, max) / whereNotBetween(key, min, max)__
+
+* __whereNull(key) / whereNotNull(key)__
+
+* __whereHas(relation) / whereNotHas(relation)__
+
 * __orderBy(key, order)__
     * order 'asc' / 'desc'
     
@@ -148,7 +159,18 @@ taskRds
     .get(); 
 ```
 
-The __where()__ function can also be used __in combination with__ the __update()__ or __remove()__ functions
+The __where()__ and __orWhere()__ function also except a __callback function__ on which all the where functions can be 
+applied:
+
+```javascript
+taskRds
+    .where((callback: WhereCallBack) => {
+       callback.where('id', '<', 3).whereNotNull('name')... 
+    })
+    .get(); 
+```
+
+All the __where functions__ can be used __in combination with__ the __update()__ or __remove()__ functions
 
 ```javascript
 taskRds.where('id', '=', 1).remove(); // will only remove the task with id 1

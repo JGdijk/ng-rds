@@ -39,17 +39,69 @@ export class Instance implements InstanceInterface {
         return this.data.first();
     }
 
-    public where(key: string | any[], action?: string, value?: string | number): Instance { //todo make type for any[]
+    public where(key: string | any | any[], action?: string, value?: string | number): Instance {
+        //todo make type for any[]
+        // one single where statement
         if (action) {
-            this.data.addWhereStatement('where', {key: key, action: action, value: value});
-        } else {
-            for (let i = 0; i < key.length; i ++) {
-                let s = key[i];
-                this.data.addWhereStatement('where', {key: s[0], action: s[1], value: s[2]});
-            }
+            this.data.addWhereStatement('where', [{key: key, action: action, value: value}]);
+        } else { // multiple statements or callback
+            this.data.addWhereStatement('where', key)
         }
         return this;
+
     }
+
+    public orWhere(key: string | any | any[], action?: string, value?: string | number): Instance {
+        // one single where statement //todo make type for any[]
+        if (action) {
+            this.data.addWhereStatement('orWhere', [{key: key, action: action, value: value}]);
+        } else { // multiple statements or callback
+            this.data.addWhereStatement('orWhere', key)
+        }
+        return this;
+
+    }
+
+    public whereBetween(key: string, min: number, max: number): Instance {
+        this.data.addWhereStatement('whereBetween', [{key: key, min: min, max: max}]);
+        return this;
+    }
+
+    public whereNotBetween(key: string, min: number, max: number): Instance {
+        this.data.addWhereStatement('whereNotBetween', [{key: key, min: min, max: max}]);
+        return this;
+    }
+
+    public whereIn(key: string, values: any[]): Instance {
+        this.data.addWhereStatement('whereIn', [{key: key, values: values}]);
+        return this;
+    }
+
+    public whereNotIn(key: string, values: any[]): Instance {
+        this.data.addWhereStatement('whereNotIn', [{key: key, values: values}]);
+        return this;
+    }
+
+    public whereNull(key: string): Instance {
+        this.data.addWhereStatement('whereNull', [key]);
+        return this;
+    }
+
+    public whereNotNull(key: string): Instance {
+        this.data.addWhereStatement('whereNotNull', [key]);
+        return this;
+    }
+
+    public whereHas(key: string): Instance {
+        this.data.addWhereStatement('whereHas', [{origin: this.data.key ,relation: key}]);
+        return this;
+    }
+
+    public whereNotHas(key: string): Instance {
+        this.data.addWhereStatement('whereNotHas', [{origin: this.data.key ,relation: key}]);
+        return this;
+    }
+
 
     public join(key: string | string[]): Instance {
         if (!Array.isArray(key)) {

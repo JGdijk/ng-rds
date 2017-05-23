@@ -33,8 +33,44 @@ export class InstanceController implements InstanceInterface {
 
     /*************************** statements ***************************
      ******************************************************************/
-    public where(key: string | any[], action?: string, value?: string|number): Instance {
+    public where(key: string | any | any[], action?: string, value?: string|number): Instance {
         return this.getInstance().where(key, action, value);
+    }
+
+    public orWhere(key: string | any | any[], action?: string, value?: string|number): Instance {
+        return this.getInstance().orWhere(key, action, value);
+    }
+
+    public whereBetween(key: string, min: number, max: number): Instance {
+        return this.getInstance().whereBetween(key, min, max);
+    }
+
+    public whereNotBetween(key: string, min: number, max: number): Instance {
+        return this.getInstance().whereNotBetween(key, min, max);
+    }
+
+    public whereIn(key: string, values: any[]): Instance {
+        return this.getInstance().whereIn(key, values);
+    }
+
+    public whereNotIn(key: string, values: any[]): Instance {
+        return this.getInstance().whereNotIn(key, values);
+    }
+
+    public whereNull(key: string): Instance {
+        return this.getInstance().whereNull(key);
+    }
+
+    public whereNotNull(key: string): Instance {
+        return this.getInstance().whereNotNull(key);
+    }
+
+    public whereHas(key: string): Instance {
+        return this.getInstance().whereHas(key);
+    }
+
+    public whereNotHas(key: string): Instance {
+        return this.getInstance().whereNotHas(key);
     }
 
     public orderBy(key: string | any[], order?: string): Instance { //todo set array type for any[]
