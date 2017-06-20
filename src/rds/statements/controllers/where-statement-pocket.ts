@@ -17,16 +17,16 @@ export class WhereStatementPocket {
             WhereInStatement |
             WhereNotInStatement |
             WhereNullStatement |
-            WhereNotNullStatement |
-            WhereHasStatement |
-            WhereNotHasStatement
+            WhereNotNullStatement
         )[] = [];
+
+    private whereHasStatements: WhereHasStatement[] = [];
+    private whereNotHasStatements: WhereNotHasStatement[] = [];
 
     constructor() {
     }
 
     public add(type: string, statement): void {
-        console.log(statement);
         switch (type) {
             case 'where':
                 this.whereStatements.push(new WhereStatement(statement));
@@ -50,31 +50,79 @@ export class WhereStatementPocket {
                 this.whereStatements.push(new WhereNotNullStatement(statement));
                 break;
             case 'whereHas':
-                this.whereStatements.push(new WhereHasStatement(statement));
+                this.whereHasStatements.push(new WhereHasStatement(statement));
                 break;
             case 'whereNotHas':
-                this.whereStatements.push(new WhereNotHasStatement(statement));
+                this.whereNotHasStatements.push(new WhereNotHasStatement(statement));
                 break;
         }
     }
 
 
-    public has(): boolean { //todo this can be extended when add more where functionality
+    public has(): boolean {
+        if (this.hasWhereHas()) return true;
+        if (this.hasWhereNotHas()) return true;
+
         return (this.whereStatements.length > 0);
     }
 
-    // public filter(data: any[]): any[] { //todo this can be devided into multiple functions when extended
-    //     for (let s of this.whereStatements) {
-    //         data = s.filter(data);
-    //     }
-    //     return data;
-    // }
+    public hasWhereHas(): boolean {
+        return (this.whereHasStatements.length > 0);
+    }
+
+    public hasWhereNotHas(): boolean {
+        return (this.whereNotHasStatements.length > 0);
+    }
+
+
 
     public check(data: any): boolean {
+        if (!this.checkWhereHas(data)) return false;
+        if (!this.checkWhereNotHas(data)) return false;
+
+        return this.checkWhere(data);
+    }
+
+    public checkWhere(data: any): boolean {
         for (let s of this.whereStatements) {
             if (!s.check(data)) return false;
         }
         return true;
     }
 
+    public checkWhereHas(data: any): boolean {
+        for (let s of this.whereHasStatements) {
+            if (!s.check(data)) return false;
+        }
+        return true;
+    }
+
+    public checkWhereNotHas(data: any): boolean {
+        for (let s of this.whereNotHasStatements) {
+            if (!s.check(data)) return false;
+        }
+        return true;
+    }
+
+    public getWhereHasKeys(): string[] {
+        let array: string[] = [];
+
+        for (let s of this.whereHasStatements) {
+            let key: string = s.statement.relation;
+            array.push(key);
+        }
+
+        return array;
+    }
+
+    public getWhereNotHasKeys(): string[] {
+        let array: string[] = [];
+
+        for (let s of this.whereNotHasStatements) {
+            let key: string = s.statement.relation;
+            array.push(key);
+        }
+
+        return array;
+    }
 }

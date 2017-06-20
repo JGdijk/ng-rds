@@ -2,8 +2,9 @@ import {WhereStatementController} from "../../statements/controllers/where-state
 import {JoinStatementController} from "../../statements/controllers/join-statement-controller";
 import {OrderByStatementController} from "../../statements/controllers/orderby-statement-controller";
 import {vault} from "../../vault/vault";
+import {InstanceDataPusherInterface} from "./instance-data-pusher.interface";
 
-export class InstanceData {
+export class InstanceData implements InstanceDataPusherInterface{
 
     public data: any[] = [];
 
@@ -38,15 +39,18 @@ export class InstanceData {
         this.ids = ids;
     }
 
-    /*************************** actions ***************************
-     ******************************************************************/
-
     public get(): any[] {
         if (this.isInitiated) return this.data;
 
         this.init();
         return this.data;
     }
+
+    /*************************** actions ***************************
+     ******************************************************************/
+
+
+
 
     public update(data: any): void {
         //todo maybe later directly from map instead of create a new array?
@@ -98,6 +102,7 @@ export class InstanceData {
      ******************************************************************/
 
     public hasKey(key?: string): boolean {
+        //todo has to add whereHas statements
         if (key === this.key) return true;
         return (this.joinStatementController.has(key));
     }
@@ -138,7 +143,7 @@ export class InstanceData {
     }
 
 
-    private fetchFromStore(): any[] {
+    public fetchFromStore(): any[] {
         return vault.get(this.key).data.get(this.ids);
     }
 

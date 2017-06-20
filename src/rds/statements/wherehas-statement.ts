@@ -2,7 +2,7 @@ import {vault} from "../vault/vault";
 
 export class WhereHasStatement {
 
-    private statement;
+    public statement;
 
     private primaryKey;
 
@@ -12,11 +12,7 @@ export class WhereHasStatement {
     }
 
     public check(o: any): boolean {
-        //todo we don't want a array.from on every object
-        let ids: any = Array.from(vault.get(this.statement.origin).relations.use(this.statement.relation).data.keys());
-        for (let id of ids) {
-            if(o[this.primaryKey] === id) return true;
-        }
-        return false;
+        let r: any = vault.get(this.statement.origin).relations.use(this.statement.relation).find(o[this.primaryKey]);
+        return !!(r);
     }
 }

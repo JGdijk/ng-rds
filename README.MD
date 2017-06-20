@@ -3,7 +3,7 @@
 __This is a work in progress__
 
 This package tries to easily store relational data on your website. You can retrieve the stored data as an observable 
-(also static) that will automatically push changes when the concerning data has changed.
+(also static) that will automatically push __immutable__ changes when the concerning data has changed.
 
 
 ## Installation

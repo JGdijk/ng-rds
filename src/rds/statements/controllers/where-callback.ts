@@ -1,4 +1,3 @@
-
 import {WhereStatementPocket} from "./where-statement-pocket";
 
 export class WhereCallback {
@@ -58,13 +57,13 @@ export class WhereCallback {
         this.pocket.add('whereNotNull', key);
         return this;
     }
-    public whereHas(key: string): WhereCallback {
-        this.pocket.add('whereHas', {origin: this.key, relation: key});
-        return this;
-    }
-
-    public whereNotHas(key: string): WhereCallback {
-        this.pocket.add('whereNotHas', {origin: this.key, relation: key});
-        return this;
-    }
+    // public whereHas(key: string): WhereCallback {
+    //     this.pocket.add('whereHas', {origin: this.key, relation: key});
+    //     return this;
+    // }
+    //
+    // public whereNotHas(key: string): WhereCallback {
+    //     this.pocket.add('whereNotHas', {origin: this.key, relation: key});
+    //     return this;
+    // }
 }

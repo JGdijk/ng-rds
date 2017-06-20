@@ -5,8 +5,9 @@ import {InstanceDataUpdater} from "./push/instance-data-updater";
 import {InstanceDataRemover} from "./push/instance-data-remover";
 import {InstanceDataAttacher} from "./push/instance-data-attacher";
 import {InstanceDataDetacher} from "./push/instance-data-detacher";
-import {Collector, CollectorDataObject} from "../../collector/collector";
+import {Collector} from "../../collector/collector";
 import {vault} from "../../vault/vault";
+import {ProcessUnit} from "../../process/process-unit";
 
 export class InstanceDataController {
 
@@ -36,6 +37,8 @@ export class InstanceDataController {
 
     /*************************** actions ***************************
      ******************************************************************/
+
+    /*getters*/
 
     public find(): Observable<any> | any {
         if (!this.observer) {
@@ -82,6 +85,9 @@ export class InstanceDataController {
         }
     }
 
+
+    /*changers*/
+
     public update(data: any): void {
         this.data.update(data);
     }
@@ -98,67 +104,52 @@ export class InstanceDataController {
         this.data.whereStatementController.add(type, statements);
     }
 
-    public addJoinStatement(type: string, statement: any): void {
-        this.data.joinStatementController.add(type, statement);
+    public addJoinStatement(statement: any): void {
+        this.data.joinStatementController.add(statement);
     }
 
     public addOrderByStatement(statement: any): void {
         this.data.orderByStatementController.add(statement);
     }
 
-    // /*************************** add statements callback ***************************
-    //  ******************************************************************/
-    //
-    // public addWhereStatementCallback(callback: any): void {
-    //     this.data.whereStatementController.addCallback('where', callback);
-    // }
-    //
-    // public addOrWhereStatementCallback(callback: any): void {
-    //     this.data.whereStatementController.addCallback('orWhere', callback);
-    // }
-
     /*************************** checkers ***************************
      ******************************************************************/
 
     private push(collector: Collector): boolean {
-        let data: CollectorDataObject = Object.assign({}, collector.get());
 
-        switch (collector.type) {
-            case 'add':
-                return this.addCheck(data);
-            case 'update':
-                return this.updateCheck(data);
-            case 'remove':
-                return this.removeCheck(data);
-            case 'attach':
-                return this.attachCheck(data);
-            case 'detach':
-                return this.detachCheck(data);
-            default:
-                return false; // todo throw error type has not be identified (should not be possible)
+        let processUnit = new ProcessUnit(collector, this.data.data);
+
+        // adjust data according to the changed data
+        processUnit.setData(this.removeCheck(processUnit));
+        processUnit.setData(this.detachCheck(processUnit));
+        processUnit.setData(this.updateCheck(processUnit));
+        processUnit.setData(this.attachCheck(processUnit));
+        processUnit.setData(this.addCheck(processUnit));
+
+        if (processUnit.collector.isChecked()) {
+            this.data.data = processUnit.data;
+            return true;
         }
     }
 
-    private addCheck(data: CollectorDataObject): boolean {
-        return this.adder.run(data);
+    private addCheck(processUnit: ProcessUnit): any[] {
+        return this.adder.run(processUnit);
     }
 
-    private updateCheck(data: CollectorDataObject): boolean {
-        return this.updater.run(data);
+    private updateCheck(processUnit: ProcessUnit): any[] {
+        return this.updater.run(processUnit);
     }
 
-    private removeCheck(data: CollectorDataObject): boolean {
-        return this.remover.run(data);
+    private removeCheck(processUnit: ProcessUnit): any[] {
+        return this.remover.run(processUnit);
     }
 
-    private attachCheck(data: CollectorDataObject): boolean {
-        if (!this.data.joinStatementController.has) return false;
-        return this.attacher.run(data);
+    private attachCheck(processUnit: ProcessUnit): any[] {
+        return this.attacher.run(processUnit);
     }
 
-    private detachCheck(data: CollectorDataObject): boolean {
-        if (!this.data.joinStatementController.has) return false;
-        return this.detacher.run(data);
+    private detachCheck(processUnit: ProcessUnit): any[] {
+        return this.detacher.run(processUnit);
     }
 
     /*************************** setters ***************************

@@ -3,7 +3,7 @@ import {WhereCallback} from "./where-callback";
 
 export class WhereStatementController {
 
-    private key: string;
+    public key: string;
 
     private pockets: WhereStatementPocket[] = [];
 
@@ -31,25 +31,89 @@ export class WhereStatementController {
         }
     }
 
-    public has(): boolean { //todo this can be extended when add more where functionality
-        return (this.pockets.length > 0);
+    public has(key?: string): boolean {
+        //checks if there is a where function
+        if (!key) {
+            for (let pocket of this.pockets) {
+                if (pocket.has()) return true;
+            }
+            return false;
+        }
+        //checks if there is a key
+        for (let pocket of this.pockets) {
+            if (pocket.has()) return true;
+        }
+        return false;
+
     }
 
-    public filter(data: any[]): any[] { //todo this can be devided into multiple functions when extended
-        return data.filter((obj) => {
-            for (let pocket of this.pockets) {
-                if (pocket.check(obj)) return true;
-            }
-            return false
-        })
+    public hasWhereHas(): boolean {
+        for (let pocket of this.pockets) {
+            if (pocket.hasWhereHas()) return true;
+        }
+        return false;
+    }
+
+    public hasWhereNotHas(): boolean {
+        for (let pocket of this.pockets) {
+            if (pocket.hasWhereNotHas()) return true;
+        }
+        return false;
+    }
+
+
+    public filter(data: any[]): any[] {
+        return data.filter((obj: any) => this.check(obj))
     }
 
     public check(data: any): boolean {
         for (let s of this.pockets) {
-            if (!s.check(data)) return false;
+            if (s.check(data)) return true;
         }
-        return true;
+        return false
     }
+
+    public checkWhereHas(data: any): boolean {
+        for (let s of this.pockets) {
+            if (s.checkWhereHas(data)) return true;
+        }
+        return false
+    }
+
+    public checkWhereNotHas(data: any): boolean {
+        for (let s of this.pockets) {
+            if (s.checkWhereNotHas(data)) return true;
+        }
+        return false
+    }
+
+    public getWhereHasKeys(): string[] {
+        let array: string[] = [];
+
+        for (let p of this.pockets) {
+            let result: string[] = p.getWhereHasKeys();
+            for (let r of result) {
+                array.push(r);
+            }
+        }
+
+        return array;
+    }
+
+    public getWhereNotHasKeys(): string[] {
+        let array: string[] = [];
+
+        for (let p of this.pockets) {
+            let result: string[] = p.getWhereNotHasKeys();
+            for (let r of result) {
+                array.push(r);
+            }
+        }
+
+        return array;
+    }
+
+
 
     /*************************** callbacks ***************************
      ******************************************************************/

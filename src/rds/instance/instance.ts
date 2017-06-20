@@ -103,12 +103,12 @@ export class Instance implements InstanceInterface {
     }
 
 
-    public join(key: string | string[]): Instance {
+    public join(key: string | string[] | any): Instance {
         if (!Array.isArray(key)) {
-            this.data.addJoinStatement('with', key);
+            this.data.addJoinStatement(key);
         } else {
             for (let s of key) {
-                this.data.addJoinStatement('with', s);
+                this.data.addJoinStatement(s);
             }
         }
         return this;

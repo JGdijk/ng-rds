@@ -77,10 +77,9 @@ export class InstanceController implements InstanceInterface {
         return this.getInstance().orderBy(key, order);
     }
 
-    public join(key: string | string[]): Instance {
+    public join(key: string | string[] | any): Instance {
         return this.getInstance().join(key);
     }
-
 
     /*************************** direct vault mutations ***************************
      ******************************************************************/

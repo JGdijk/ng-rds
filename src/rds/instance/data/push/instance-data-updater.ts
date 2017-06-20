@@ -1,191 +1,352 @@
 import {InstanceData} from "../instance-data";
-import {CollectorDataObject} from "../../../collector/collector";
 import {vault} from "../../../vault/vault";
 import {VaultRelation} from "../../../vault/vault-relation";
+import {UpdateCollector} from "../../../collector/collectors/update-collector";
+import {Collector} from "../../../collector/collector";
+import {JoinStatementController} from "../../../statements/controllers/join-statement-controller";
+import {JoinStatement} from "../../../statements/join-statement";
+import {ProcessUnit} from "../../../process/process-unit";
+import {InstanceDataPusherInterface} from "../instance-data-pusher.interface";
 
 export class InstanceDataUpdater {
 
     private data: InstanceData;
 
-    private check: boolean;
+    private collector: Collector;
+
+    private updateCollector: UpdateCollector;
+
+    private newData: any[];
 
     constructor(instanceData: InstanceData) {
         this.data = instanceData;
     }
 
-    public run(data: CollectorDataObject): boolean {
+    public run(processUnit: ProcessUnit): any[] {
 
         //if non of the added keys matches the instance's return false
-        if (!this.checkKeys(data)) return false;
+        if (!this.checkKeys(processUnit.collector)) return;
 
-        //keep track if anything has been added
-        this.check = false;
-
-        //we don't need any of the data this instance doesn't contain or is related to with a relation
-        data = this.stripKeys(data);
+        //set the collector
+        this.init(processUnit);
 
         //checks if any of the main data needs to be added directly
-        data = this.processTarget(data);
+        this.processTarget();
 
-        this.processRelations(data);
+        //checks if any data changes according to any relation connected to this instance;
+        this.processRelations();
 
-        this.data.order();
-
-        return this.check;
+        return this.newData
     }
 
-    private checkKeys(data: CollectorDataObject): boolean {
-        for (let key in data) {
+    private checkKeys(collector: Collector): boolean {
+        for (let key of collector.use('update').keys()) {
             if (this.data.hasKey(key)) return true;
         }
         return false;
     }
 
-    private stripKeys(data: CollectorDataObject): CollectorDataObject {
-        for (let key in data) {
-            if (!this.data.hasKey(key)) {
-                delete data[key];
-            }
-        }
-        return data;
-    }
 
     //process the parent data;
-    private processTarget(collectorData: CollectorDataObject): CollectorDataObject {
+    private processTarget(): void {
         let key = this.data.key;
 
         // if the collector doesn't contain any parent data we can move on
-        if (!collectorData.hasOwnProperty(key)) return collectorData;
+        if (!this.updateCollector.has(key)) return;
 
-        let data = collectorData[key];
+        let array: any[] = [];
+        let check: boolean;
 
-        // check if it matches any id's
-        if (this.data.hasIds()) {
-            data = this.filterIds(data);
+        let primaryKey: string = vault.get(this.data.key).primaryKey;
+        let keys: string[] = vault.get(this.data.key).relations.objectKeys();
+        let model: any = vault.get(this.data.key).model;
+
+        for (let obj of this.newData) {
+            // checks if the object needs to be updated
+            let result: any = this.updateCollector.get(this.data.key, obj[primaryKey]);
+
+            if (!result) {
+                array.push(obj);
+                continue;
+            }
+
+            // if the new updated object doesn't pass the where anymore whe remove it from the array
+            if (this.data.whereStatementController.has) {
+                if (!this.data.whereStatementController.check(result)) {
+                    check = true;
+                    continue;
+                }
+            }
+
+            // we now know we will update a object
+            check = true;
+
+            // we still need to transfer the relations and make a model out of the object
+            let newObj = this.transferRelations(keys, obj, result);
+            array.push(new model(newObj));
         }
 
-        //check if it is in data
-        data = this.inTarget(data);
+        if (check) {
+            this.collector.setChecked();
+            this.newData = this.orderArray(this.data, array);
+        }
+    }
 
-        //if not in where anymore since the update delete
-        for (let i in data) {
-            if (this.data.whereStatementController.check(data[i])) continue;
-            delete data[i];
+    private processRelations(): void {
+        if (!this.data.joinStatementController.has()) return;
+
+        let result = this.checkRelationData(this.data, this.newData);
+
+        if (result) {
+            this.newData = result;
+        }
+    }
+
+    /**
+     * Receives the data that needs to be checked and adjusted only if it has any relations.
+     * If it has relations (controller) then we are going to pass trough the objects.
+     * The data can either be an array of objects or just a single object.
+     *
+     * We will return the newly made data if any changes have been made. This function doesn't know what will happen
+     * with the newly made data.
+     */
+    private checkRelationData(controller: InstanceDataPusherInterface, data: any): any {
+        if (!controller) return;
+
+        return (Array.isArray(data))
+            ? this.checkRelationDataArray(controller, data)
+            : this.checkRelationDataObject(controller, data)
+    }
+
+    /**
+     * If the data is an object we are going to make a new object in case any of its relations will be adjusted.
+     * Because we want our data to be immutable the original object also needs to be changed. We will only return this
+     * newly created object if the data has actually changed.
+     *
+     * We check for every relation if it the data needs to be changed. If any of the relations has been changed, check
+     * will be true and we will return the newly created object with it's new relation data.
+     */
+    private checkRelationDataObject(controller: InstanceDataPusherInterface, dataObject: any): any {
+        // if there is no object simply return;
+        if (!dataObject) return;
+
+        let joinController: JoinStatementController = controller.joinStatementController;
+
+        let check: boolean;
+        let newObj: any = Object.assign({}, dataObject);
+
+        // all the different relations if they exist
+        for (let statement of joinController.get()) {
+
+            // this will return us the changed relation data (if adjusted)
+            let result: any = this.checkRelationStatement(statement, newObj);
+
+            // if the relation is not affected continue
+            if (!result) continue;
+
+            // if the relation is affected we add the relation to the object;
+            check = true;
+            newObj[statement.objectKey()] = result.data;
+
         }
 
-        //if by this point we have no results anymore move on
-        if (!data.length) {
-            delete collectorData[key];
-            return collectorData;
+        // if any of the relations has changed we will send back the new object as a new model;
+        if (check) {
+            this.collector.setChecked();
+            let model: any = vault.get(joinController.origin).model;
+            return new model(newObj);
         }
+    }
 
-        //we now know that there will be something added and thus we have to return true;
-        this.isChecked();
+    /**
+     * If the data is an array we will make an array in case any adjustments have been made to any of its objects.
+     * This new array will only be returned if any of its object has been adjusted.
+     */
+    private checkRelationDataArray(controller: InstanceDataPusherInterface, dataArray: any[]): any[] {
+        let array: any[] = [];
+        let check: boolean;
 
-        //check if it has relations (transfer them to new updated model
-        data = this.transferRelations(data);
+        let joinController: JoinStatementController = controller.joinStatementController;
 
-        //we exchange the remaining objects to the actual data
-        let model = vault.get(key).model;
-        let primaryKey = vault.get(key).primaryKey;
-        obj_loop: for (let obj of data) {
-            for (let i in this.data.data) {
-                if (obj[primaryKey] !== this.data.data[i][primaryKey]) continue;
-                this.data.replace(i, new model(obj));
-                continue obj_loop;
+        // goes over every object in the array
+        for (let obj of dataArray ) {
+
+            let innerCheck: boolean = false;
+            // we transfer this to a new object so that we will always be working with the adjust object
+            let innerObj: any = obj;
+
+            // goes over every statement
+            for (let statement of joinController.get()) {
+
+                let result: any = this.checkRelationStatement(statement, innerObj);
+
+                // if the relation is not affected continue
+                if (!result) continue;
+                // if the relation is affected we want to make a new object
+                innerCheck = true;
+
+                let newObj = Object.assign({}, innerObj);
+                newObj[statement.objectKey()] = result.data;
+                innerObj = newObj;
+            }
+
+            // if any of the relations is effected innerCheck will be true and we push a new object (innerObj)
+            if (!innerCheck) {
+                array.push(obj);
+            } else {
+                // if we push a new object which relations has changed we will have to make a new model of it
+                check = true;
+                let model: any = vault.get(joinController.origin).model;
+                array.push(new model(innerObj));
             }
         }
 
-        delete collectorData[key]; //todo here should be an if when the target key is also used as a deeply nested relation
-
-        return collectorData;
-    }
-
-    private processRelations(data: CollectorDataObject): void {
-        for (let key in data) {
-            this.processRelation(key, data[key]);
+        // if any of the objects has been changed we push the new array
+        if (check) {
+            this.collector.setChecked();
+            return this.orderArray(controller, array);
         }
     }
 
-    private processRelation(key: string, data: any[]): void {
-        // get the primary key for this relation obj
-        let primaryKey: string = vault.get(key).primaryKey;
+    /**
+     * We first check if the relation of the object is an array or an object.
+     */
+    private checkRelationStatement(statement: JoinStatement, data: any): any {
+        return (statement.returnArray())
+            ? this.checkRelationStatementArray(statement, data)
+            : this.checkRelationStatementObject(statement, data)
+    }
 
-        //get the model for this relation
-        let model: any = vault.get(key).model;
+    /**
+     * if the relation is a single object.
+     * we check if its relation has been altered and if an updated object is the same as the relation.
+     * if any of this is true we return the new relation object.
+     */
+    private checkRelationStatementObject(statement: JoinStatement, dataObject: any): any {
 
-        // get the relation info from the parent view
-        let relation: VaultRelation = vault.get(this.data.key).relations.use(key);
+        // if the dataObject has the relation
+        let relation: any = dataObject[statement.objectKey()];
 
-        obj_loop: for (let obj of data) { // loops trough the data we got from the collector
-            for (let instance_obj of this.data.data) { // loops trough the existing data
-                for (let i in instance_obj[relation.objectKey]) { //checks the collector data against the existing relation data
+        // if this object doesn't have the relation there is no need to update
+        if (!relation) return;
 
-                    if (obj[primaryKey] !== instance_obj[relation.objectKey][i][primaryKey]) continue;
+        let check: boolean;
 
-                    instance_obj[relation.objectKey].splice(i, 1);
-                    instance_obj[relation.objectKey].push(new model(obj));
+        // checks if the relation itself needs to be altered
+        let primaryKey: string = vault.get(statement.key).primaryKey;
+        let collectorResult: any = this.updateCollector.get(statement.key, relation[primaryKey]);
+        if (collectorResult) {
 
-                    this.isChecked();
+            //checks if it still passes the update, if not we return null object
+            if (statement.whereStatementController && statement.whereStatementController.has()) {
+                if (!statement.whereStatementController.check(collectorResult)) return {data: null}
+            }
 
-                    // we want to check if there is a possibility this relation exists on multiple objects
-                    if (!relation.pivot) {
-                        continue obj_loop;
-                    } else {
-                        break;
+            check = true;
+
+            let keys: string[] = statement.joinStatementController.objectKeys();
+            // we just want to copy the relations in case the data is being overwritten.
+            let obj: any = this.transferRelations(keys, relation, collectorResult);
+
+            // we do need to return a new model;
+            let model: any = vault.get(statement.key).model;
+            relation = new model(obj);
+        }
+
+        //we check if there is an existing relation object and if it has any nested relation that will be altered
+        let nestedResult: any = this.checkRelationData(statement, relation);
+        if (nestedResult) {
+            check = true;
+            relation = nestedResult;
+        }
+
+        if (check) return {data: relation};
+    }
+
+    /**
+     * if the relation is an array
+     * first we check if every relation object has to be changed according to the updated items (nested relations)
+     * then we check if any of the items needs to be updated
+     */
+    private checkRelationStatementArray(statement: JoinStatement, dataObject: any): any {
+        // the relations
+        let relations : any[] = dataObject[statement.objectKey()];
+
+        if (relations.length === 0) return;
+
+        let array: any[] = [];
+        let check: boolean = false;
+
+        let primaryKey: string = vault.get(statement.key).primaryKey;
+        let keys: string[] = vault.get(statement.key).relations.objectKeys();
+        let model: any = vault.get(statement.key).model;
+
+        // for every relation we going to check if it's updated or not
+        for (let relationObj of relations) {
+
+            let innerCheck: boolean;
+            let relation: any = relationObj;
+
+            // checks if the object itself needs to be updated
+            let collectorResult = this.updateCollector.get(statement.key, relation[primaryKey]);
+            if (collectorResult) {
+
+                // checks if it still passes the where statements
+                if (statement.whereStatementController && statement.whereStatementController.has()) {
+                    // if it doesn't we continue
+                    if (!statement.whereStatementController.check(collectorResult)) {
+                        // we still need to make check truthy because now we might need to send back an empty array
+                        check = true;
+                        continue;
                     }
                 }
+
+                innerCheck = true;
+                let newObj: any = this.transferRelations(keys, relation, collectorResult);
+                relation = new model(newObj);
+            }
+
+            // we check if any nested relation is updated
+            let result: any = this.checkRelationData(statement, relation);
+            if (result) {
+                innerCheck = true;
+                relation = result;
+            }
+
+            if (innerCheck) {
+                check = true;
+                array.push(relation);
+            } else {
+                array.push(relationObj);
             }
         }
+        if (check) return {data: this.orderArray(statement, array)};
     }
 
-    private inTarget(data: any[]): any[] {
-        let primaryKey = vault.get(this.data.key).primaryKey;
-
-        return data.filter(obj => {
-            for (let d of this.data.data) {
-                if (d[primaryKey] === obj[primaryKey]) return true;
-            }
-            return false;
-        })
-    }
-
-    private transferRelations(data: any[]): any[] {
-        if (!this.data.joinStatementController.has()) return data;
-
-        let keys: string[] = this.data.joinStatementController.objectKeys();
-        let primaryKey: string = vault.get(this.data.key).primaryKey;
-
-        // we compare every instance object against the to be added object
-        obj_loop: for (let obj of data) {
-            for (let instance_obj of this.data.data) {
-                if (obj[primaryKey] !== instance_obj[primaryKey]) continue;
-
-                // now we will transfer every relation to the new object, this way we will get a new object
-                // but with the same relation objects to trigger change effects only on the target and not on the
-                // relations
-                for (let key of keys) {
-                    obj[key] = instance_obj[key];
-                }
-                continue obj_loop;
-            }
-        }
-        return data;
-    }
 
     /*************************** helper ***************************
      ******************************************************************/
 
-    private isChecked(): void {
-        if (!this.check) this.check = true;
+
+    private init(processUnit: ProcessUnit): void {
+        this.collector = processUnit.collector;
+        this.updateCollector = processUnit.collector.use('update');
+        this.newData = processUnit.data;
     }
 
-    private filterIds(data: any[]): any[] {
-        let primaryKey = vault.get(this.data.key).primaryKey;
-        // return data.filter(obj => this.data.ids.includes(obj[primaryKey]));
-        return data.filter(obj => () => {
-            if (this.data.ids === obj[primaryKey]) return true;
-        });
+    private transferRelations(keys: string[], oldObject: any, newObject: any): any {
+        for (let key of keys) {
+            if (oldObject.hasOwnProperty(key)) {
+                newObject[key] = oldObject[key];
+            }
+        }
+        return newObject
+    }
+
+    private orderArray(controller: InstanceDataPusherInterface, array: any[]): any[] {
+        return (controller.orderByStatementController.has())
+            ? controller.orderByStatementController.init(array)
+            : array
     }
 
 }

@@ -35,7 +35,7 @@ export class VaultObject {
         this.setPrimaryKey(model.primaryKey);
     }
 
-    public add(objects: any | any[], collector: Collector): Collector {
+    public add(objects: any | any[], collector: Collector): void {
         // we always want to work with an array
         objects = (Array.isArray(objects)) ? objects : [objects];
 
@@ -45,7 +45,7 @@ export class VaultObject {
                 this.data.add(obj);
                 collector.add(this.name, obj);
             }
-            return collector;
+            return;
         }
 
         // now we have to check if each object has any relation info
@@ -59,10 +59,10 @@ export class VaultObject {
                     //check if the result is an array of objects or a singel object
                     if (key.array) {
                         for (let relation of obj[key.key]) {
-                            this.addRelation(obj[this.primaryKey], key.name, relation[vault.get(key.name).primaryKey])
+                            this.addRelation(obj[this.primaryKey], key.name, relation[vault.get(key.name).primaryKey], collector)
                         }
                     } else {
-                        this.addRelation(obj[this.primaryKey], key.name, obj[key.key][vault.get(key.name).primaryKey])
+                        this.addRelation(obj[this.primaryKey], key.name, obj[key.key][vault.get(key.name).primaryKey], collector)
                     }
                     //add the object
                     vault.get(key.name).add(obj[key.key], collector);
@@ -70,10 +70,10 @@ export class VaultObject {
                     //check if the result is an array of ids or a singel id
                     if (key.array) {
                         for (let id of obj[key.key]) {
-                            this.addRelation(obj[this.primaryKey], key.name, id);
+                            this.addRelation(obj[this.primaryKey], key.name, id, collector);
                         }
                     } else {
-                        this.addRelation(obj[this.primaryKey], key.name, obj[key.key]);
+                        this.addRelation(obj[this.primaryKey], key.name, obj[key.key], collector);
                     }
                 }
 
@@ -83,7 +83,7 @@ export class VaultObject {
             collector.add(this.name, obj);
         }
 
-        return collector
+        return
     }
 
     public update(ids: number[], data: any, collector: Collector): Collector {
@@ -97,7 +97,7 @@ export class VaultObject {
 
         for (let id of ids) {
             this.data.update(id, data);
-            collector.add(this.name, this.data.find(id));
+            collector.update(this.name, this.data.find(id));
         }
 
         return collector
@@ -107,19 +107,18 @@ export class VaultObject {
 
         // if there are no relations we can simply remove the items
         if (!this.relations.has()) {
-            console.log('geen relaties');
             for (let id of ids) {
                 this.data.remove(id);
-                collector.add(this.name, id);
+                collector.remove(this.name, id);
             }
             return collector;
         }
 
         // if there are relations we want to remove them from the respective vaults
         for (let id of ids) {
-            this.removeRelations(id);
+            this.removeRelations(id, collector);
             this.data.remove(id);
-            collector.add(this.name, id);
+            collector.remove(this.name, id);
         }
 
         return collector;
@@ -134,14 +133,14 @@ export class VaultObject {
         let vaultRelation = this.relations.use(relation);
         for (let id of ids) {
             vaultRelation.add(id, relationIds);
-            collector.push(this.name, relation, id, relationIds);
+            collector.attach(this.name, relation, id, relationIds);
         }
 
         //adding mirror connections
         let vaultRelationMirror = vault.get(relation).relations.use(this.name);
         for (let relationId of relationIds) {
             vaultRelationMirror.add(relationId, ids);
-            collector.push(relation, this.name, relationId, ids);
+            collector.attach(relation, this.name, relationId, ids);
         }
         return collector;
     }
@@ -164,13 +163,13 @@ export class VaultObject {
         let vaultRelation = this.relations.use(relation);
         for (let id of ids) {
             vaultRelation.detach(id, relationIds);
-            collector.push(this.name, relation, id, relationIds);
+            collector.detach(this.name, relation, id, relationIds);
         }
         //detach the mirror
         let vaultRelationMirror = vault.get(relation).relations.use(this.name);
         for (let relationId of relationIds) {
             vaultRelationMirror.detach(relationId, ids);
-            collector.push(relation, this.name, relationId, ids);
+            collector.detach(relation, this.name, relationId, ids);
         }
         return collector;
     }
@@ -194,7 +193,6 @@ export class VaultObject {
         // check if we need to return an array or a single result depending on the relation type
         if (relation.returnArray) {
             let array: any[] = [];
-
             for (let id of ids) {
                 let obj: any = vaultObject.data.find(id);
                 if (obj) array.push(new vaultObject.model(obj));
@@ -206,8 +204,7 @@ export class VaultObject {
                 data: (array.length > 0) ? array : relation.emptyObject()
             }
         } else {
-            let obj: any = vaultObject.data.find(id);
-
+            let obj: any = vaultObject.data.find(ids[0]);
             // if no matching object where found by the id we return empty, else we return the object
             return {
                 name: relation.objectKey,
@@ -222,14 +219,16 @@ export class VaultObject {
     /*************************** helper functions ***************************
      ******************************************************************/
 
-    private addRelation(id: number, relationName: string, relationId: number): void {
+    private addRelation(id: number, relationName: string, relationId: number, collector: Collector): void {
         // saving the relation
         this.relations.use(relationName).add(id, relationId);
+        collector.attach(this.name, relationName, id, relationId);
         // saving the mirror relation
         vault.get(relationName).relations.use(this.name).add(relationId, id);
+        collector.attach(relationName, this.name, relationId, id);
     }
 
-    private removeRelations(id: number): void {
+    private removeRelations(id: number, collector: Collector): void {
         for (let i in this.relations.relations) {
             let relation = this.relations.use(i);
             let ids = relation.find(id);
@@ -237,9 +236,13 @@ export class VaultObject {
 
             //remove the relation
             relation.remove(id);
+            collector.detach(this.name, i, id, ids);
+
+
             //remove all the mirror relations
             for (let relationId of ids) {
                 vault.get(i).relations.use(this.name).detach(relationId, id);
+                collector.detach(i, this.name, relationId, id);
             }
         }
     }
@@ -257,14 +260,14 @@ export class VaultObject {
         vaultRelation.remove(id);
 
         //add it to the collector
-        collector.push(this.name, relation, id, relationIds);
+        collector.detach(this.name, relation, id, relationIds);
 
         // detaching the mirror
         let vaultRelationMirror = vault.get(relation).relations.use(this.name);
 
         for (let relationId of relationIds) {
             vaultRelationMirror.detach(relationId, id);
-            collector.push(relation, this.name, relationId, id);
+            collector.detach(relation, this.name, relationId, id);
         }
 
         return collector;

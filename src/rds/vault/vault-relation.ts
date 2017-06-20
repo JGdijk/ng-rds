@@ -104,6 +104,16 @@ export class VaultRelation {
         }
     }
 
+    public names(): any { //todo make type
+        return {
+            name: this.name,
+            options: [
+                this.name,
+                this.objectKey
+            ]
+        }
+    }
+
     public find(id: number): number[] {
         return this.data.get(id);
     }
@@ -131,23 +141,30 @@ export class VaultRelation {
         this.data.delete(id);
     }
 
-    public detach(id: number, relation_ids: number | number[]): void {
+    public detach(id: number, targetIds: number | number[]): void {
         let array = this.find(id);
-        let new_array = (!Array.isArray(relation_ids))
-            ? array.filter(x => x !== relation_ids)
-            // : array.filter(x => !relation_ids.includes(x));
-            : array.filter(x => () => {
-                    for (let relation_id of relation_ids) {
-                        if (relation_id === x) return false;
-                    } return true;
-                });
-        this.data.set(id, new_array);
+
+        if (!array) return; //todo should throw error
+
+        let relationIds: number[] = (Array.isArray(targetIds)) ? targetIds : [targetIds];
+
+        let newArray = array.filter((arrayId: number) => {
+            for (let relationId of relationIds) {
+                if (relationId === arrayId) return false;
+            } return true;
+        });
+
+        if (newArray.length === 0) {
+            this.data.delete(id);
+        } else {
+            this.data.set(id, newArray);
+        }
     }
 
     public emptyObject() : any {
         return (this.returnArray)
             ? []
-            : {}
+            : null
     }
 
     private setReturnArray(): void {

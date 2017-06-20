@@ -77,9 +77,7 @@ export class Vault {
      */
     public add(key: string, objects: any | any[]): void {
         let collector: Collector = new Collector();
-        collector.type = 'add';
-        collector = this.objects[key].add(objects, collector);
-
+        this.get(key).add(objects,collector);
         this.observer.next(collector);
     }
 
@@ -95,7 +93,6 @@ export class Vault {
         ids = (Array.isArray(ids)) ? ids : [ids];
 
         let collector: Collector = new Collector();
-        collector.type = 'update';
         collector = this.get(key).update(ids, data, collector);
 
         this.observer.next(collector);
@@ -111,7 +108,6 @@ export class Vault {
         ids = (Array.isArray(ids)) ? ids : [ids];
 
         let collector: Collector = new Collector();
-        collector.type = 'remove';
         collector = this.get(key).remove(ids, collector);
 
         this.observer.next(collector);
@@ -135,7 +131,6 @@ export class Vault {
         relationIds = (Array.isArray(relationIds)) ? relationIds : [relationIds];
 
         let collector: Collector = new Collector();
-        collector.type = 'attach';
         collector = this.get(key).attach(ids, relation, relationIds, collector);
 
         this.observer.next(collector);
@@ -163,7 +158,6 @@ export class Vault {
             : (Array.isArray(relationIds)) ? relationIds : [relationIds];
 
         let collector: Collector = new Collector();
-        collector.type = 'detach';
         collector = this.get(key).detach(ids, relation, fixedRelationIds, collector);
 
         this.observer.next(collector);

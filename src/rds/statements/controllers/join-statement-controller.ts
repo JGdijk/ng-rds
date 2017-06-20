@@ -1,20 +1,27 @@
 import {JoinStatement} from "../join-statement";
+import {JoinCallback} from "./join-callback";
 
 export class JoinStatementController {
 
     private joinStatements: JoinStatement[] = [];
 
-    private origin: string;
+    public origin: string;
 
     constructor(origin: string) {
         this.origin = origin;
     }
 
-    public add(type: string, statement: any): void {
-        switch(type) {
-            case 'with':
-                this.joinStatements.push(new JoinStatement(statement, this.origin));
-                break;
+    public get(): JoinStatement[] {
+        return this.joinStatements;
+    }
+
+    public add(statements: any | any[]): void {
+        if (Array.isArray(statements)) {
+            for (let s of statements) {
+                this.addStatement(s);
+            }
+        } else {
+            this.addStatement(statements)
         }
     }
 
@@ -41,5 +48,29 @@ export class JoinStatementController {
             array.push(s.objectKey());
         }
         return array;
+    }
+
+    private addStatement(statement: any): void {
+
+        //if the statement is a callback process it directly
+        if (typeof statement === "function") {
+            this.joinStatements.push(new JoinStatement(statement, this.origin, true));
+            return;
+        }
+
+        //if not then we have to check if it is a chained nested relation e.g. 'project.tasks.users'
+        let statements: string[] = statement.split(".");
+        let s: string = statements[0];
+
+        // if the array has more than 1 element the statement indeed contains nested relations
+        if (statements.length > 1) {
+            let otherStatements: string = statements.slice(1).join(".");
+            let callback = (jc: JoinCallback) => {
+                jc.name(s).join(otherStatements)
+            };
+            this.joinStatements.push(new JoinStatement(callback, this.origin, true));
+            return;
+        }
+        this.joinStatements.push(new JoinStatement(s, this.origin));
     }
 }

@@ -14,7 +14,7 @@ export class OrderByStatementController {
         return (this.orderByStatements.length > 0);
     }
 
-    public init(data: any[]): any[] {
+    public init(data: any[]): any[] { //todo change this name
         for (let s of this.orderByStatements) {
             data = s.order(data);
         }

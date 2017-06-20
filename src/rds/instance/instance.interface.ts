@@ -25,8 +25,10 @@ export interface InstanceInterface {
     whereHas(key: string): Instance
     whereNotHas(key: string): Instance
 
-    join(key: string | string[]): Instance
+    join(key: string | string[] | any): Instance
+
     orderBy(key: string | any[], order: string): Instance
+
     update(data: any): void
     remove(): void
 }

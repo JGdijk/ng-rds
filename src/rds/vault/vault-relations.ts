@@ -41,14 +41,16 @@ export class VaultRelations {
     }
 
     public relationName(key: string): string {
-        // if it is already the proper key return it
-        if (key === this.origin) return key;
-        // if not then look for it according to the provided key
+        key = key.toLowerCase();
+
         for (let i in this.relations) {
-            for (let relationKey of this.relations[i].keys()) {
-                if (relationKey.key === key) return relationKey.name;
+            for (let relationKey of this.relations[i].names().options) {
+                if (relationKey.toLowerCase() === key) {
+                    return this.relations[i].names().name;
+                }
             }
         }
+        //todo throw error if nothing is found?
     }
 
     public keys(): RelationKey[] {
@@ -58,6 +60,16 @@ export class VaultRelations {
                 array.push(key);
             }
         }
+        return array;
+    }
+
+    public objectKeys(): string[] {
+        let array: string[] = [];
+
+        for (let i in this.relations) {
+            array.push(this.relations[i].objectKey);
+        }
+
         return array;
     }
 
@@ -85,7 +97,6 @@ export class VaultRelations {
             objectKey: objectKey,
             relationKey: relation.relationId
         };
-        console.log(relation_object)
 
         // we have to check if a reversed relation(dull) has been set already, if so we activate instead of add
         if (!this.relations[name]) {
