@@ -1,4 +1,6 @@
-export class WhereNotInStatement {
+import {WhereStatementInterface} from "./where-statement.interface";
+
+export class WhereNotInStatement implements WhereStatementInterface{
 
     private statement;
 

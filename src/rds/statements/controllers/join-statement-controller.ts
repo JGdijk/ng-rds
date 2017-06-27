@@ -15,13 +15,13 @@ export class JoinStatementController {
         return this.joinStatements;
     }
 
-    public add(statements: any | any[]): void {
+    public add(statements: string | string[], callback: any): void {
         if (Array.isArray(statements)) {
             for (let s of statements) {
                 this.addStatement(s);
             }
         } else {
-            this.addStatement(statements)
+            this.addStatement(statements, callback)
         }
     }
 
@@ -50,11 +50,11 @@ export class JoinStatementController {
         return array;
     }
 
-    private addStatement(statement: any): void {
+    private addStatement(statement: any, callback: any = null): void {
 
         //if the statement is a callback process it directly
-        if (typeof statement === "function") {
-            this.joinStatements.push(new JoinStatement(statement, this.origin, true));
+        if (callback !== null) {
+            this.joinStatements.push(new JoinStatement(statement, this.origin, callback));
             return;
         }
 
@@ -66,9 +66,9 @@ export class JoinStatementController {
         if (statements.length > 1) {
             let otherStatements: string = statements.slice(1).join(".");
             let callback = (jc: JoinCallback) => {
-                jc.name(s).join(otherStatements)
+                jc.join(otherStatements)
             };
-            this.joinStatements.push(new JoinStatement(callback, this.origin, true));
+            this.joinStatements.push(new JoinStatement(s, this.origin, callback));
             return;
         }
         this.joinStatements.push(new JoinStatement(s, this.origin));

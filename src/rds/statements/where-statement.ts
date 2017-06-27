@@ -1,4 +1,6 @@
-export class WhereStatement {
+import {WhereStatementInterface} from "./where-statement.interface";
+
+export class WhereStatement implements WhereStatementInterface{
 
     private statement;
 
@@ -16,6 +18,8 @@ export class WhereStatement {
         switch (s.action) {
             case '=':
                 return (o[s.key] === s.value);
+            case '!=':
+                return (o[s.key] !== s.value);
             case '>':
                 return (o[s.key] > s.value);
             case '<':

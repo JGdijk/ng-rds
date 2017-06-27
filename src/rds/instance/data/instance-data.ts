@@ -4,11 +4,14 @@ import {OrderByStatementController} from "../../statements/controllers/orderby-s
 import {vault} from "../../vault/vault";
 import {InstanceDataPusherInterface} from "./instance-data-pusher.interface";
 
-export class InstanceData implements InstanceDataPusherInterface{
+export class InstanceData implements InstanceDataPusherInterface {
+
 
     public data: any[] = [];
 
     public ids: number[];
+
+    public idsOnly: boolean;
 
     /** this is the name of the instance*/
     public key: string;
@@ -44,6 +47,22 @@ export class InstanceData implements InstanceDataPusherInterface{
 
         this.init();
         return this.data;
+    }
+
+    public getIdsOnly(): number[] {
+        let array: number[] = [];
+
+        let primaryKey: string = vault.get(this.key).primaryKey;
+
+        for (let obj of this.get()) {
+            array.push(obj[primaryKey]);
+        }
+
+        return array;
+    }
+
+    public setIdsOnly(): void {
+        this.idsOnly = true;
     }
 
     /*************************** actions ***************************
@@ -86,24 +105,13 @@ export class InstanceData implements InstanceDataPusherInterface{
     }
 
 
-    /*************************** manipulating the data ***************************
-     ******************************************************************/
-
-    public push(instance: any): void {
-        this.data.push(instance);
-    }
-
-    public replace(key: any, instance: any): void { //todo fix key type
-        this.data.splice(key,1);
-        this.data.push(instance);
-    }
-
     /*************************** helper function ***************************
      ******************************************************************/
 
     public hasKey(key?: string): boolean {
         //todo has to add whereHas statements
         if (key === this.key) return true;
+        if (this.whereStatementController.has(key)) return true;
         return (this.joinStatementController.has(key));
     }
 
@@ -124,7 +132,8 @@ export class InstanceData implements InstanceDataPusherInterface{
 
         data = this.makeInstances(data);
 
-        if (this.joinStatementController.has()) {
+        // only if there are relations and if they are required
+        if (this.joinStatementController.has() && !this.idsOnly) {
             data = this.joinStatementController.attach(data)
         }
 

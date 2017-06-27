@@ -59,19 +59,39 @@ export class WhereStatementPocket {
     }
 
 
-    public has(): boolean {
-        if (this.hasWhereHas()) return true;
-        if (this.hasWhereNotHas()) return true;
+    public has(key?: string): boolean {
+        if (!key) {
+            if (this.hasWhereHas()) return true;
+            if (this.hasWhereNotHas()) return true;
+            return (this.whereStatements.length > 0);
+        }
 
-        return (this.whereStatements.length > 0);
+        if (this.hasWhereHas(key)) return true;
+        return (this.hasWhereNotHas(key));
     }
 
-    public hasWhereHas(): boolean {
-        return (this.whereHasStatements.length > 0);
+    public hasWhereHas(key?: string): boolean {
+        if (!key) {
+            return (this.whereHasStatements.length > 0);
+        }
+
+        if (this.whereHasStatements.length === 0) return;
+        for (let s of this.whereHasStatements) {
+            if (s.has(key)) return true;
+        }
+
     }
 
-    public hasWhereNotHas(): boolean {
-        return (this.whereNotHasStatements.length > 0);
+    public hasWhereNotHas(key?: string): boolean {
+        if (!key) {
+            return (this.whereNotHasStatements.length > 0);
+        }
+
+        if (this.whereNotHasStatements.length === 0) return;
+        for (let s of this.whereNotHasStatements) {
+            if (s.key === key) return true;
+        }
+
     }
 
 
@@ -108,7 +128,7 @@ export class WhereStatementPocket {
         let array: string[] = [];
 
         for (let s of this.whereHasStatements) {
-            let key: string = s.statement.relation;
+            let key: string = s.key;
             array.push(key);
         }
 
@@ -119,10 +139,18 @@ export class WhereStatementPocket {
         let array: string[] = [];
 
         for (let s of this.whereNotHasStatements) {
-            let key: string = s.statement.relation;
+            let key: string = s.key;
             array.push(key);
         }
 
         return array;
+    }
+
+    public getWhereHasStatements(): WhereHasStatement[] {
+        return this.whereHasStatements;
+    }
+
+    public getWhereNotHasStatements(): WhereNotHasStatement[] {
+        return this.whereNotHasStatements;
     }
 }

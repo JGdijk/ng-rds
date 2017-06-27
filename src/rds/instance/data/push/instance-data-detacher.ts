@@ -1,26 +1,14 @@
-import {InstanceData} from "../instance-data";
 import {vault} from "../../../vault/vault";
 import {ProcessUnit} from "../../../process/process-unit";
-import {Collector} from "../../../collector/collector";
-import {DetachCollector} from "../../../collector/collectors/detach-collector";
 import {JoinStatementController} from "../../../statements/controllers/join-statement-controller";
 import {JoinStatement} from "../../../statements/join-statement";
 import {WhereStatementController} from "../../../statements/controllers/where-statement-controller";
-import {InstanceDataPusherInterface} from "../instance-data-pusher.interface";
+import {InstanceDataPush} from "./instance-data-push";
+import {whereNotHasCheck} from "./where-has-checks/where-has-not-checker";
 
-export class InstanceDataDetacher {
+export class InstanceDataDetacher extends InstanceDataPush{
 
-    private data: InstanceData;
-
-    private collector: Collector;
-
-    private detachCollector: DetachCollector;
-
-    private newData: any[];
-
-    constructor(instanceData: InstanceData) {
-        this.data = instanceData;
-    }
+    protected type: string = 'detach';
 
     public run(processUnit: ProcessUnit): any {
 
@@ -41,9 +29,6 @@ export class InstanceDataDetacher {
      */
     private processTarget(): void {
 
-        // if the detacher doesn't have the key return
-        if (!this.detachCollector.has(this.data.key)) return;
-
         // if there are no where statements
         if (!this.data.whereStatementController.hasWhereHas() && !this.data.whereStatementController.hasWhereNotHas())
             return;
@@ -51,8 +36,8 @@ export class InstanceDataDetacher {
         // checks if any of the data needs to be removed from the current array
         let whereHasResult: any[] = this.checkWhereHas(this.data.whereStatementController, this.newData);
         if (whereHasResult) {
-            this.newData = whereHasResult;
             this.newData = this.orderArray(this.data, whereHasResult);
+            this.collector.setChecked();
         }
 
         // checks if any of the data needs to be added to the current array
@@ -62,8 +47,8 @@ export class InstanceDataDetacher {
             this.newData,
             this.data.ids);
         if (whereHasNotResult) {
-            this.newData = whereHasNotResult;
             this.newData = this.orderArray(this.data, whereHasNotResult);
+            this.collector.setChecked();
         }
     }
 
@@ -77,19 +62,17 @@ export class InstanceDataDetacher {
         // checks if there is a whereHas
         if (!controller.hasWhereHas()) return;
 
-        let primaryKey: string = controller.key;
+        let check: boolean = false;
 
         let array: any[] =  objectsArray.filter((obj: any) => {
-
-            // checks if the collector has the specific id, if not then we know it won't be detached
-            if (!this.detachCollector.get(this.data.key, obj[primaryKey])) return true;
-
-            // if the whereHas is still truthy even after the detach we can keep the object
-            return (controller.checkWhereHas(obj));
+            if (controller.check(obj)) return true;
+            check = true;
+            return false;
         });
 
-        if (array.length === 0) return;
-        return array;
+        return (check)
+            ? array
+            : null;
     }
 
     /**
@@ -102,13 +85,10 @@ export class InstanceDataDetacher {
                              filterIds: number[] = null): any[] {
 
         // checks if there is a whereNotHas
-        if (!whereStatement.hasWhereNotHas()) return;
-
-        // get all the relations of the whereNotHas
-        let keys: string[] = whereStatement.getWhereNotHasKeys();
+        if (!whereStatement.hasWhereNotHas() && !whereStatement.hasWhereHas()) return;
 
         // get all the ids from the collector
-        let ids = this.detachCollector.getTargetIds(whereStatement.key, keys);
+        let ids = whereNotHasCheck.run(this.typeCollector, whereStatement);
 
         // checks if there are any targeted ids
         if (filterIds) ids = ids.filter((id: number) => {
@@ -150,148 +130,24 @@ export class InstanceDataDetacher {
             let newObj: any = new model(obj);
 
             // if it has any relations attach it
-            if (joinStatement && joinStatement.has()) newObj = joinStatement.attach(newObj);
+            if (joinStatement && joinStatement.has()) {
+               array.push(joinStatement.attach(newObj))
+            } else {
+                array.push(newObj);
+            }
 
-            array.push(newObj);
         }
 
         return array;
     }
 
 
-
-    private processRelations(): void {
-        if (!this.data.joinStatementController.has()) return;
-
-        let result = this.checkRelationData(this.data, this.newData);
-
-        if (result) {
-            this.newData = result;
-        }
-    }
-
-    /**
-     * Receives the data that needs to be checked and adjusted only if it has any relations.
-     * If it has relations (controller) then we are going to pass trough the objects.
-     * The data can either be an array of objects or just a single object.
-     *
-     * We will return the newly made data if any changes have been made. This function doesn't know what will happen
-     * with the newly made data.
-     */
-    private checkRelationData(controller: InstanceDataPusherInterface, data: any): any {
-        if (!controller) return;
-
-        return (Array.isArray(data))
-            ? this.checkRelationDataArray(controller, data)
-            : this.checkRelationDataObject(controller, data)
-    }
-
-    /**
-     * If the data is an object we are going to make a new object in case any of its relations will be adjusted.
-     * Because we want our data to be immutable the original object also needs to be changed. We will only return this
-     * newly created object if the data has actually changed.
-     *
-     * We check for every relation if it the data needs to be changed. If any of the relations has been changed, check
-     * will be true and we will return the newly created object with it's new relation data.
-     */
-    private checkRelationDataObject(controller: InstanceDataPusherInterface, dataObject: any): any {
-        // if there is no object simply return;
-        if (!dataObject) return;
-
-        let joinController: JoinStatementController = controller.joinStatementController;
-
-        let check: boolean;
-        let newObj: any = Object.assign({}, dataObject);
-
-        // all the different relations if they exist
-        for (let statement of joinController.get()) {
-
-            // this will return us the changed relation data (if adjusted)
-            let result: any = this.checkRelationStatement(statement, newObj);
-
-            // if the relation is not affected continue
-            if (!result) continue;
-
-            // if the relation is affected we add the relation to the object;
-            check = true;
-            newObj[statement.objectKey()] = result.data;
-        }
-
-        // if any of the relations has changed we will send back the new object as a new model;
-        if (check) {
-            this.collector.setChecked();
-            let model: any = vault.get(joinController.origin).model;
-            return new model(newObj);
-        }
-    }
-
-    /**
-     * If the data is an array we will make an array in case any adjustments have been made to any of its objects.
-     * This new array will only be returned if any of its object has been adjusted.
-     */
-    private checkRelationDataArray(controller: InstanceDataPusherInterface, dataArray: any[]): any[] {
-
-        let joinController: JoinStatementController = controller.joinStatementController;
-
-        let array: any[] = [];
-        let check: boolean;
-
-        // goes over every object in the array
-        for (let obj of dataArray ) {
-
-            let innerCheck: boolean = false;
-            // we transfer this to a new object so that we will always be working with the adjust object
-            let innerObj: any = obj;
-
-            // goes over every statement
-            for (let statement of joinController.get()) {
-
-                let result: any = this.checkRelationStatement(statement, innerObj);
-
-                // if the relation is not affected continue
-                if (!result) continue;
-                // if the relation is affected we want to make a new object
-                innerCheck = true;
-
-                let newObj = Object.assign({}, innerObj);
-                newObj[statement.objectKey()] = result.data;
-                innerObj = newObj;
-
-            }
-
-            // if any of the relations is effected innerCheck will be true and we push a new object (innerObj)
-            if (!innerCheck) {
-                array.push(obj);
-            } else {
-                // if we push a new object which relations has changed we will have to make a new model of it
-                check = true;
-                let model: any = vault.get(joinController.origin).model;
-                array.push(new model(innerObj));
-            }
-        }
-
-        // if any of the objects has been changed we push the new array
-        if (check) {
-            this.collector.setChecked();
-            return this.orderArray(controller, array);
-        }
-    }
-
-    /**
-     * We first check if the relation of the object is an array or an object.
-     */
-    private checkRelationStatement(statement: JoinStatement, data: any): any {
-        return (statement.returnArray())
-            ? this.checkRelationStatementArray(statement, data)
-            : this.checkRelationStatementObject(statement, data)
-    }
-
     /**
      * if the relation is a single object.
      * we check if its relation has been altered and if an added object is the same as the relation.
      * if any of this is true we return the new relation object.
      */
-    private checkRelationStatementObject(statement: JoinStatement, dataObject: any): any {
+    protected checkRelationStatementObject(statement: JoinStatement, dataObject: any): any {
 
         let relation: any = dataObject[statement.objectKey()];
 
@@ -302,23 +158,10 @@ export class InstanceDataDetacher {
             return;
         }
 
-        // check for detach normal
-        let primaryKeyOrigin: string = vault.get(statement.origin).primaryKey;
-        let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
-
-        //if the relation needs to be detached we return a null object;
-        if(this.detachCollector.check(
-                statement.origin,
-                dataObject[primaryKeyOrigin],
-                statement.key,
-                relation[primaryKeyRelation])) return {data: null};
-
-        // check for detach whereHas
-        if (this.detachCollector.get(statement.key, relation[primaryKeyRelation])) {
-            // check if the statement has where has
-            if (statement.whereStatementController && statement.whereStatementController.hasWhereHas()) {
-                // if the data doesn't pass anymore remove
-                if (!statement.whereStatementController.checkWhereHas(relation)) return {data: null}
+        // check for detach
+        if (statement.whereStatementController && statement.whereStatementController.hasWhereHas()) {
+            if (!statement.whereStatementController.check(relation)) {
+                return {data: null}
             }
         }
 
@@ -333,7 +176,7 @@ export class InstanceDataDetacher {
      * first we check if every relation object has to be changed according to the new items (nested relations)
      * then we check if any of the new items needs to be added to this relation
      */
-    private checkRelationStatementArray(statement: JoinStatement, dataObject: any): any {
+    protected checkRelationStatementArray(statement: JoinStatement, dataObject: any): any {
         // the relations
         let relations : any[] = dataObject[statement.objectKey()];
 
@@ -342,67 +185,50 @@ export class InstanceDataDetacher {
             let result = this.checkAttachArray(statement, dataObject);
             return (result)
                 ? {data: this.orderArray(statement, result)}
-                : {data: null}
+                : null
         }
 
         let check: boolean;
         let array: any[] = [];
 
-        let primaryKeyOrigin: string = vault.get(statement.origin).primaryKey;
-        let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
-
-        // we go over every existing relation and check if it still needs to be included
+        // we check if any of the existing data needs to be altered
         for (let relation of relations) {
 
-            //if the relation needs to be detached we won't push it;
-            if(this.detachCollector.check(
-                    statement.origin,
-                    dataObject[primaryKeyOrigin],
-                    statement.key,
-                    relation[primaryKeyRelation])) {
+            // check if it still passes the where check;
+            if (!statement.whereStatementController.check(relation)) {
                 check = true;
                 continue;
             }
 
-
-            // check for detach whereHas
-            if (this.detachCollector.get(statement.key, relation[primaryKeyRelation])) {
-                // check if the statement has where has
-                if (statement.whereStatementController && statement.whereStatementController.hasWhereHas()) {
-                    // if the data doesn't pass anymore remove
-                    if (!statement.whereStatementController.checkWhereHas(relation)) {
-                        check = true;
-                        continue;
-                    }
-                }
-            }
-
-            // we check if there is an existing object and if it has any relation that will be altered
+            // checks if the object needs to be altered because of nested relations
             let nestedResult: any = this.checkRelationData(statement, relation);
             if (nestedResult) {
-                check = true;
-                array.push(nestedResult);
+                array.push(nestedResult)
             } else {
-                array.push(relation)
+                array.push(relation);
             }
         }
 
-        // checks if there is a whereHasNot condition because we might want to add some additional objects
-
+        // check if any data needs to be added (whereNotHas)
         let newObjects: any[] = this.checkAttachArray(statement, dataObject, array);
+        if (newObjects) {
+            check = true;
+            for (let obj of newObjects) {
+                array.push(obj);
+            }
+        }
 
-        if (newObjects) return {data: this.orderArray(statement,newObjects)};
-        else if (check) return {data: this.orderArray(statement, array)};
+        if (check) return {data: this.orderArray(statement, array)};
     }
 
 
     private checkAttachSingle(statement: JoinStatement, dataObject: any): any {
 
         // if there is no hasWhereNot has return;
-        if (!statement.whereStatementController || !statement.whereStatementController.hasWhereNotHas()) return;
-
-        // if the key is not in de detacher return;
-        if (!this.detachCollector.get(statement.key)) return;
+        if (!statement.whereStatementController || (
+            !statement.whereStatementController.hasWhereNotHas() &&
+            !statement.whereStatementController.hasWhereHas()
+        )) return;
 
         let primaryKey: string = vault.get(statement.origin).primaryKey;
 
@@ -425,21 +251,19 @@ export class InstanceDataDetacher {
     private checkAttachArray(statement:JoinStatement, dataObject: any, relationArray: any[] = null): any[] {
 
         // if there is no hasWhereNot has return;
-        if (!statement.whereStatementController || !statement.whereStatementController.hasWhereNotHas()) return;
-
-        // if the key is not in de detacher return;
-        if (!this.detachCollector.get(statement.key)) return;
+        if (!statement.whereStatementController || (
+                !statement.whereStatementController.hasWhereNotHas() &&
+                !statement.whereStatementController.hasWhereHas()
+            )
+        ) return;
 
         let primaryKey: string = vault.get(statement.origin).primaryKey;
 
-        // checks if there is any change of an update
+        // get all the ids of the relation
         let ids: number[] = vault.get(statement.origin).relations.use(statement.key).find(dataObject[primaryKey]);
 
         // if the object doesn't have any relations return;
         if (!ids || ids.length === 0) return;
-
-        // checks which id's needs to be added
-        ids = ids.filter((id: number) => !!(this.detachCollector.get(statement.key, id)));
 
         // if we want to check against existing data we only filter the ids that are not in the existing data
         if (relationArray) {
@@ -452,17 +276,14 @@ export class InstanceDataDetacher {
         }
         if (ids.length === 0) return;
 
-        let newObjects: any[] = [];
-        // gets every object;
-        for (let id of ids) {
-            let newObj: any = vault.get(statement.key).data.find(id);
-            newObjects.push(newObj);
-        }
+        // get all the objects
+        let newObjects: any[] = vault.get(statement.key).data.get(ids);
 
-        // we sill have to check the relations pass the where conditions. if not return
+        // we sill have to check the relations pass the where conditions.
         newObjects = statement.whereStatementController.filter(newObjects);
-        if (newObjects.length === 0) return;
 
+        // if no results are left nothing needs to be attached
+        if (newObjects.length === 0) return;
 
         let newModels: any[] = [];
         let model: any = vault.get(statement.key).model;
@@ -478,26 +299,6 @@ export class InstanceDataDetacher {
         }
 
         return this.orderArray(statement, newModels);
-    }
-
-
-    private checkKeys(collector: Collector): boolean {
-        for (let key of collector.use('detach').keys()) {
-            if (this.data.hasKey(key)) return true;
-        }
-        return false;
-    }
-
-    private init(processUnit: ProcessUnit): void {
-        this.collector = processUnit.collector;
-        this.detachCollector = processUnit.collector.use('detach');
-        this.newData = processUnit.data;
-    }
-
-    private orderArray(controller: InstanceDataPusherInterface, array: any[]): any[] {
-        return (controller.orderByStatementController.has())
-            ? controller.orderByStatementController.init(array)
-            : array
     }
 }
 

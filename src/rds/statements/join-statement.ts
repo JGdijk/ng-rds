@@ -18,14 +18,13 @@ export class JoinStatement implements InstanceDataPusherInterface{
     public orderByStatementController: OrderByStatementController;
     public joinStatementController: JoinStatementController;
 
-    constructor(statement: any, origin: string, callback: boolean = false) {
+    constructor(statement: any, origin: string, callback: any = null) {
         this.origin = origin;
+        this.setKey(statement);
 
-        if (!callback) {
-            this.setKey(statement);
-        } else {
+        if (callback !== null) {
             this.complicated = true;
-            this.addCallback(statement);
+            this.addCallback(callback);
         }
     }
 

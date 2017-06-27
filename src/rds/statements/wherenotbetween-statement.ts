@@ -1,4 +1,6 @@
-export class WhereNotBetweenStatement {
+import {WhereStatementInterface} from "./where-statement.interface";
+
+export class WhereNotBetweenStatement implements WhereStatementInterface{
 
     private statement;
 

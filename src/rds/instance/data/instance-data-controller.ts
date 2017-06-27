@@ -22,6 +22,8 @@ export class InstanceDataController {
     private attacher: InstanceDataAttacher;
     private detacher: InstanceDataDetacher;
 
+    private returnType: string;
+
     private observer: boolean;
 
     constructor(key: string) {
@@ -35,44 +37,33 @@ export class InstanceDataController {
         this.detacher = new InstanceDataDetacher(this.data);
     }
 
-    /*************************** actions ***************************
+    /*************************** retrieving ***************************
      ******************************************************************/
 
-    /*getters*/
-
     public find(): Observable<any> | any {
-        if (!this.observer) {
-            return this.data.get()[0];
-        } else {
-            return this.broadcaster()
-                .startWith(null)
-                .filter((collector: Collector) => {
-                    return (!collector)
-                        ? true
-                        : this.push(collector)
-                })
-                .map(() => this.data.get()[0]);
-        }
-    }
-
-    public get(): Observable<any> | any {
-        if (!this.observer) {
-            return this.data.get();
-        } else {
-            return this.broadcaster()
-                .startWith(null)
-                .filter((collector: Collector) => {
-                    return (!collector)
-                        ? true
-                        : this.push(collector)
-                })
-                .map(() => this.data.get());
-        }
+        this.returnType = 'find';
+        return this.returnResults();
     }
 
     public first(): Observable<any> | any {
+        this.returnType = 'first';
+        return this.returnResults();
+    }
+
+    public get(): Observable<any> | any {
+        this.returnType = 'get';
+        return this.returnResults();
+    }
+
+    public getIds(): Observable<any> | any {
+        this.returnType = 'getIds';
+        this.data.setIdsOnly();
+        return this.returnResults();
+    }
+
+    private returnResults(): Observable<any> | any {
         if (!this.observer) {
-            return this.data.get()[0];
+            return this.returnData();
         } else {
             return this.broadcaster()
                 .startWith(null)
@@ -81,12 +72,27 @@ export class InstanceDataController {
                         ? true
                         : this.push(collector)
                 })
-                .map(() => this.data.get()[0]);
+                .map(() => this.returnData());
+        }
+    }
+
+    private returnData(): any | any[] {
+        switch(this.returnType) {
+            case 'find':
+                return this.data.get()[0];
+            case 'first':
+                return this.data.get()[0];
+            case 'get':
+                return this.data.get();
+            case 'getIds':
+                return this.data.getIdsOnly();
         }
     }
 
 
-    /*changers*/
+
+    /*************************** writing ***************************
+     ******************************************************************/
 
     public update(data: any): void {
         this.data.update(data);
@@ -104,8 +110,8 @@ export class InstanceDataController {
         this.data.whereStatementController.add(type, statements);
     }
 
-    public addJoinStatement(statement: any): void {
-        this.data.joinStatementController.add(statement);
+    public addJoinStatement(statement: string | string[], callback: any = null): void {
+        this.data.joinStatementController.add(statement, callback);
     }
 
     public addOrderByStatement(statement: any): void {

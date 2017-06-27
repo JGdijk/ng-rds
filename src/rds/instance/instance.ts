@@ -3,8 +3,6 @@ import {Observable} from "rxjs";
 import {InstanceInterface} from "./instance.interface";
 import {InstanceDataController} from "./data/instance-data-controller";
 
-
-
 export class Instance implements InstanceInterface {
 
     private data: InstanceDataController;
@@ -19,6 +17,16 @@ export class Instance implements InstanceInterface {
         return this.data.find();
     }
 
+    public first(ids: number | number[] | boolean = 0, obs: boolean = true): Observable<any> | any {
+        if (typeof(ids) === "boolean") {
+            obs = ids;
+            ids = 0;
+        }
+        this.data.setIds(ids);
+        this.data.setObserver(obs);
+        return this.data.first();
+    }
+
     public get(ids: number | number[] | boolean = null, obs: boolean = true): Observable<any> | any {
         if (typeof(ids) === "boolean") {
             obs = ids;
@@ -29,15 +37,11 @@ export class Instance implements InstanceInterface {
         return this.data.get();
     }
 
-    public first(ids: number | number[] | boolean = 0, obs: boolean = true): Observable<any> | any {
-        if (typeof(ids) === "boolean") {
-            obs = ids;
-            ids = 0;
-        }
-        this.data.setIds(ids);
+    public getIds(obs: boolean = true): Observable<any> | any {
         this.data.setObserver(obs);
-        return this.data.first();
+        return this.data.getIds();
     }
+
 
     public where(key: string | any | any[], action?: string, value?: string | number): Instance {
         //todo make type for any[]
@@ -92,25 +96,44 @@ export class Instance implements InstanceInterface {
         return this;
     }
 
-    public whereHas(key: string): Instance {
-        this.data.addWhereStatement('whereHas', [{origin: this.data.key ,relation: key}]);
-        return this;
-    }
-
-    public whereNotHas(key: string): Instance {
-        this.data.addWhereStatement('whereNotHas', [{origin: this.data.key ,relation: key}]);
-        return this;
-    }
-
-
-    public join(key: string | string[] | any): Instance {
+    public whereHas(key: string | string[], callback?: any): Instance {
         if (!Array.isArray(key)) {
-            this.data.addJoinStatement(key);
+            this.data.addWhereStatement('whereHas', [{origin: this.data.key ,relation: key, callback: callback}]);
         } else {
+            if (callback){
+                //todo throw big error now allowed with array
+            }
+            for (let s of key) {
+                this.data.addWhereStatement('whereHas', [{origin: this.data.key ,relation: s, callback: callback}]);
+            }
+        }
+        return this;
+    }
+
+    public whereNotHas(key: string | string[]): Instance {
+        if (!Array.isArray(key)) {
+            this.data.addWhereStatement('whereNotHas', [{origin: this.data.key ,relation: key}]);
+        } else {
+            for (let s of key) {
+                this.data.addWhereStatement('whereNotHas', [{origin: this.data.key ,relation: s}]);
+            }
+        }
+        return this;
+    }
+
+
+    public join(key: string | string[], callback: any = null): Instance {
+
+        if (Array.isArray(key)) {
             for (let s of key) {
                 this.data.addJoinStatement(s);
             }
+        } else if (callback !== null) {
+            this.data.addJoinStatement(key, callback);
+        } else {
+            this.data.addJoinStatement(key);
         }
+
         return this;
     }
 

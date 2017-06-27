@@ -5,8 +5,9 @@ export interface InstanceInterface {
 
     // retrieving functions
     find(id: number, obs: boolean): Observable<any> | any;
-    get(ids: number | number[] | boolean, obs: boolean): any[] | Observable<any[]>
     first(ids: number | number[] | boolean, obs: boolean): Observable<any> | any;
+    get(ids: number | number[] | boolean, obs: boolean): any[] | Observable<any[]>
+    getIds(obs: boolean): number[] | Observable<number[]>
 
     // where functions + callback
     where(key: string | any | any[], action?: string, value?: string|number): Instance
@@ -22,10 +23,10 @@ export interface InstanceInterface {
     whereNull(key: string): Instance
     whereNotNull(key: string): Instance
 
-    whereHas(key: string): Instance
-    whereNotHas(key: string): Instance
+    whereHas(key: string | string[], callback?: any): Instance
+    whereNotHas(key: string | string[], callback?: any): Instance
 
-    join(key: string | string[] | any): Instance
+    join(key: string | string[], callback?: any): Instance
 
     orderBy(key: string | any[], order: string): Instance
 

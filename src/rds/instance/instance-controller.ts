@@ -22,14 +22,17 @@ export class InstanceController implements InstanceInterface {
         return this.getInstance().find(id, obs);
     }
 
-    public get(ids: number | number[] | boolean = null, obs: boolean = true): Observable<any> | any {
-        return this.getInstance().get(ids, obs);
-    }
-
     public first(ids: number | number[] | boolean = 0, obs: boolean = true): Observable<any> | any {
         return this.getInstance().first(ids, obs);
     }
 
+    public get(ids: number | number[] | boolean = null, obs: boolean = true): Observable<any> | any {
+        return this.getInstance().get(ids, obs);
+    }
+
+    public getIds(obs: boolean = true): Observable<any> | any {
+        return this.getInstance().getIds(obs);
+    }
 
     /*************************** statements ***************************
      ******************************************************************/
@@ -65,11 +68,11 @@ export class InstanceController implements InstanceInterface {
         return this.getInstance().whereNotNull(key);
     }
 
-    public whereHas(key: string): Instance {
-        return this.getInstance().whereHas(key);
+    public whereHas(key: string | string[], callback?: any): Instance {
+        return this.getInstance().whereHas(key, callback);
     }
 
-    public whereNotHas(key: string): Instance {
+    public whereNotHas(key: string | string[]): Instance {
         return this.getInstance().whereNotHas(key);
     }
 
@@ -77,12 +80,13 @@ export class InstanceController implements InstanceInterface {
         return this.getInstance().orderBy(key, order);
     }
 
-    public join(key: string | string[] | any): Instance {
-        return this.getInstance().join(key);
+    public join(key: string | string[], callback?: any): Instance {
+        return this.getInstance().join(key, callback);
     }
 
     /*************************** direct vault mutations ***************************
      ******************************************************************/
+
     public add(objects: any | any[]): void {
         vault.add(this.name, objects);
     }
@@ -101,7 +105,7 @@ export class InstanceController implements InstanceInterface {
 
     public attach(key: string,
                   relation_ids: number | number[],
-                  targetIds:  number | number[] = null): InstanceRelationAttacher{
+                  targetIds: number | number[] = null): InstanceRelationAttacher {
 
         if (!targetIds) {
             return new InstanceRelationAttacher(this.name, key, relation_ids);
@@ -112,7 +116,7 @@ export class InstanceController implements InstanceInterface {
 
     public detach(key: string,
                   relationIds: string | number | number[],
-                  targetIds:  number | number[] = null): InstanceRelationDetacher {
+                  targetIds: number | number[] = null): InstanceRelationDetacher {
         if (!targetIds) {
             return new InstanceRelationDetacher(this.name, key, relationIds);
         } else {

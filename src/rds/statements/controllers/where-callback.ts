@@ -57,13 +57,29 @@ export class WhereCallback {
         this.pocket.add('whereNotNull', key);
         return this;
     }
-    // public whereHas(key: string): WhereCallback {
-    //     this.pocket.add('whereHas', {origin: this.key, relation: key});
-    //     return this;
-    // }
-    //
-    // public whereNotHas(key: string): WhereCallback {
-    //     this.pocket.add('whereNotHas', {origin: this.key, relation: key});
-    //     return this;
-    // }
+
+    public whereHas(key: string | string[], callback?: any): WhereCallback {
+        if (!Array.isArray(key)) {
+            this.pocket.add('whereHas', {origin: this.key ,relation: key, callback: callback});
+        } else {
+            if (callback){
+                //todo throw big error now allowed with array
+            }
+            for (let s of key) {
+                this.pocket.add('whereHas', {origin: this.key ,relation: s, callback: callback});
+            }
+        }
+        return this;
+    }
+
+    public whereNotHas(key: string | string[]): WhereCallback {
+        if (!Array.isArray(key)) {
+            this.pocket.add('whereNotHas', {origin: this.key ,relation: key});
+        } else {
+            for (let s of key) {
+                this.pocket.add('whereNotHas', {origin: this.key ,relation: s});
+            }
+        }
+        return this;
+    }
 }

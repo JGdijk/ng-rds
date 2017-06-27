@@ -1,5 +1,7 @@
 import {WhereStatementPocket} from "./where-statement-pocket";
 import {WhereCallback} from "./where-callback";
+import {WhereHasStatement} from "../wherehas-statement";
+import {WhereNotHasStatement} from "../wherenothas-statement";
 
 export class WhereStatementController {
 
@@ -41,7 +43,7 @@ export class WhereStatementController {
         }
         //checks if there is a key
         for (let pocket of this.pockets) {
-            if (pocket.has()) return true;
+            if (pocket.has(key)) return true;
         }
         return false;
 
@@ -105,6 +107,32 @@ export class WhereStatementController {
 
         for (let p of this.pockets) {
             let result: string[] = p.getWhereNotHasKeys();
+            for (let r of result) {
+                array.push(r);
+            }
+        }
+
+        return array;
+    }
+
+    public getWhereHasStatements(): WhereHasStatement[] {
+        let array: WhereHasStatement[] = [];
+
+        for (let p of this.pockets) {
+            let result: WhereHasStatement[] = p.getWhereHasStatements();
+            for (let r of result) {
+                array.push(r);
+            }
+        }
+
+        return array;
+    }
+
+    public getWhereNotHasStatements(): WhereNotHasStatement[] {
+        let array: WhereNotHasStatement[] = [];
+
+        for (let p of this.pockets) {
+            let result: WhereNotHasStatement[] = p.getWhereNotHasStatements();
             for (let r of result) {
                 array.push(r);
             }

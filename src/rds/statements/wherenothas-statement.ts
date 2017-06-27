@@ -1,18 +1,23 @@
 import {vault} from "../vault/vault";
+import {WhereStatementInterface} from "./where-statement.interface";
 
-export class WhereNotHasStatement {
+export class WhereNotHasStatement implements WhereStatementInterface{
 
-    public statement;
+    public origin: string;
+
+    public key: string;
 
     private primaryKey;
 
     constructor(statement) {
-        this.statement = statement;
+        this.origin = statement.origin;
+        this.key = vault.get(this.origin).relations.relationName(statement.relation);
+
         this.primaryKey = vault.get(statement.origin).primaryKey;
     }
 
     public check(o: any): boolean {
-        let r: any = vault.get(this.statement.origin).relations.use(this.statement.relation).find(o[this.primaryKey]);
+        let r: any = vault.get(this.origin).relations.use(this.key).find(o[this.primaryKey]);
         return !(r);
     }
 }
