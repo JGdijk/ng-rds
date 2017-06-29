@@ -88,15 +88,24 @@ export class VaultObject {
 
     public update(ids: number[], data: any, collector: Collector): Collector {
 
-        //todo we might want improve the update by accepting relation keys?
+        let keys: string[] = this.relations.objectKeys();
 
-        //make sure primary keys are not being overwritten
-        for (let key of data){
-            if (key === this.primaryKey) delete data[key];
+        let newData: any = {};
+        //make sure primary keys + relations are not being overwritten
+        dataLoop: for (let key in data){
+            if (!data.hasOwnProperty(key)) continue;
+
+            if (key === this.primaryKey) {
+                continue;
+            }
+            for (let k of keys) {
+                if (k === key) continue dataLoop;
+            }
+            newData[key] = data[key];
         }
 
         for (let id of ids) {
-            this.data.update(id, data);
+            this.data.update(id, newData);
             collector.update(this.name, this.data.find(id));
         }
 

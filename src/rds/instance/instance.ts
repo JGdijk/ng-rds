@@ -42,6 +42,10 @@ export class Instance implements InstanceInterface {
         return this.data.getIds();
     }
 
+    public count(obs: boolean = true): Observable<any> | any {
+        this.data.setObserver(obs);
+        return this.data.count();
+    }
 
     public where(key: string | any | any[], action?: string, value?: string | number): Instance {
         //todo make type for any[]

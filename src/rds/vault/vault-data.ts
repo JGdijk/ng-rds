@@ -31,6 +31,7 @@ export class VaultData {
     public update(id: number, data: any): void {
         let obj = this.find(id);
         for (let key in data) {
+            if (!data.hasOwnProperty(key)) continue;
             obj[key] = data[key];
         }
     }

@@ -66,7 +66,7 @@ export class InstanceDataAdder extends InstanceDataPush {
                     continue dataLoop;
                 }
             }
-            if (this.data.idsOnly) {
+            if (this.data.primaryOnly) {
                 newData.push(new model(obj));
             } else {
                 newData.push(this.data.joinStatementController.attach(new model(obj)));

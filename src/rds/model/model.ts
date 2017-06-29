@@ -28,7 +28,15 @@ export class Model{
 
     public save(): void{
         let name = this.constructor.name;
-        vault.add(name, this);
+        let data: any = Object.assign({}, this);
+
+        let primaryKey: string = vault.get(name).primaryKey;
+
+        if (vault.get(name).data.find(this[primaryKey])) {
+            vault.update(name, this[primaryKey], data);
+        } else {
+            vault.add(name, data);
+        }
     };
 
     public update(data: any): void {

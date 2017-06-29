@@ -8,6 +8,7 @@ export interface InstanceInterface {
     first(ids: number | number[] | boolean, obs: boolean): Observable<any> | any;
     get(ids: number | number[] | boolean, obs: boolean): any[] | Observable<any[]>
     getIds(obs: boolean): number[] | Observable<number[]>
+    count(obs: boolean): number | Observable<number>
 
     // where functions + callback
     where(key: string | any | any[], action?: string, value?: string|number): Instance

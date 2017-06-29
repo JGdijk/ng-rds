@@ -28,7 +28,7 @@ export abstract class InstanceDataPush {
     }
 
     protected processRelations(): void {
-        if (!this.data.joinStatementController.has() || this.data.idsOnly) return;
+        if (!this.data.joinStatementController.has() || this.data.primaryOnly) return;
 
         let result = this.checkRelationData(this.data, this.newData);
 

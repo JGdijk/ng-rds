@@ -11,7 +11,7 @@ export class InstanceData implements InstanceDataPusherInterface {
 
     public ids: number[];
 
-    public idsOnly: boolean;
+    public primaryOnly: boolean;
 
     /** this is the name of the instance*/
     public key: string;
@@ -61,8 +61,8 @@ export class InstanceData implements InstanceDataPusherInterface {
         return array;
     }
 
-    public setIdsOnly(): void {
-        this.idsOnly = true;
+    public setPrimaryOnly(): void {
+        this.primaryOnly = true;
     }
 
     /*************************** actions ***************************
@@ -133,7 +133,7 @@ export class InstanceData implements InstanceDataPusherInterface {
         data = this.makeInstances(data);
 
         // only if there are relations and if they are required
-        if (this.joinStatementController.has() && !this.idsOnly) {
+        if (this.joinStatementController.has() && !this.primaryOnly) {
             data = this.joinStatementController.attach(data)
         }
 

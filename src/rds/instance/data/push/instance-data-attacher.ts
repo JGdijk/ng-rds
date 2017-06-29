@@ -165,7 +165,7 @@ export class InstanceDataAttacher extends InstanceDataPush{
             let newObj: any = new model(obj);
 
             // if it has any relations attach it
-            if (joinStatement && joinStatement.has() && !this.data.idsOnly) newObj = joinStatement.attach(newObj);
+            if (joinStatement && joinStatement.has() && !this.data.primaryOnly) newObj = joinStatement.attach(newObj);
 
             array.push(newObj);
         }

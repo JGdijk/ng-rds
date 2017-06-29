@@ -57,7 +57,13 @@ export class InstanceDataController {
 
     public getIds(): Observable<any> | any {
         this.returnType = 'getIds';
-        this.data.setIdsOnly();
+        this.data.setPrimaryOnly();
+        return this.returnResults();
+    }
+
+    public count(): Observable<any> | any {
+        this.returnType = 'count';
+        this.data.setPrimaryOnly();
         return this.returnResults();
     }
 
@@ -86,6 +92,8 @@ export class InstanceDataController {
                 return this.data.get();
             case 'getIds':
                 return this.data.getIdsOnly();
+            case 'count':
+                return this.data.get().length;
         }
     }
 

@@ -34,6 +34,10 @@ export class InstanceController implements InstanceInterface {
         return this.getInstance().getIds(obs);
     }
 
+    public count(obs: boolean = true): Observable<any> | any {
+        return this.getInstance().count(obs);
+    }
+
     /*************************** statements ***************************
      ******************************************************************/
     public where(key: string | any | any[], action?: string, value?: string|number): Instance {
