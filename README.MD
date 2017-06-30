@@ -22,24 +22,24 @@ Lets say we are writing an application where we have multiple projects that can 
 Simply **add** the items:
 
 ```javascript
-let projectStore = rdsService.use('Project');
+let projectRds = rdsService.use('Project');
  
-projectStore.add([
-            {id: 1, name: 'project1', random: 987, tasks: [
-                {id: 1, name: 'task1', random: 31},
-                {id: 2, name: 'task2', random: 55}
-            ]},
-            {id: 2, name: 'project2', random: 6854, tasks: [
-                {id: 3, name: 'task3', random: 21},
-            ]},
-            {id: 3, name: 'project3', random: 65},
-        ]);
+projectRds.add([
+    {id: 1, name: 'project1', random: 987, tasks: [
+        {id: 1, name: 'task1', random: 31},
+        {id: 2, name: 'task2', random: 55}
+    ]},
+    {id: 2, name: 'project2', random: 6854, tasks: [
+        {id: 3, name: 'task3', random: 21},
+    ]},
+    {id: 3, name: 'project3', random: 65},
+]);
 ```
 
 Because of the way the package stores the data we are now able to retrieve the data as an observable:
 
 ```javascript
-projectStore.get().subscribe((projects: Project[]) => console.log(projects));
+projectRds.get().subscribe((projects: Project[]) => console.log(projects));
 ```
 
 Every time a change will be made to the stored data the observable will check if its concerning data needs to be
@@ -47,7 +47,7 @@ updated and will push all the changed objects (**immutable**).
 
 To request the projects with the related tasks we can join them back:
 ```javascript
-projectSTore
+projectRds
     .join('Task')
     .get()
     .subscribe((projects: Project[]) => console.log(projects));
@@ -56,7 +56,7 @@ projectSTore
 We are also able to make more complicated statements:
 
 ```javascript
-projectStore
+projectRds
     .where((callback: WhereCallback) => callback
         .whereHas('Task', (cb: WhereHasCallback) => cb
             .where('random', '>', 32)))
