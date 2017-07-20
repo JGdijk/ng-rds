@@ -6,7 +6,6 @@ import {InstanceDataPusherInterface} from "./instance-data-pusher.interface";
 
 export class InstanceData implements InstanceDataPusherInterface {
 
-
     public data: any[] = [];
 
     public ids: number[];
@@ -17,6 +16,12 @@ export class InstanceData implements InstanceDataPusherInterface {
     public key: string;
 
     public isInitiated: boolean = false;
+
+    public amount: number;
+
+    public page: number;
+
+    public until: number;
 
     /** all the statements */
     public whereStatementController: WhereStatementController;
@@ -130,6 +135,11 @@ export class InstanceData implements InstanceDataPusherInterface {
             data = this.whereStatementController.filter(data);
         }
 
+        data = this.orderByStatementController.init(data);
+
+        // if there is any form of pagination/infinite we want only a part of the data;
+        if (this.amount) data = this.cut(data);
+
         data = this.makeInstances(data);
 
         // only if there are relations and if they are required
@@ -139,12 +149,26 @@ export class InstanceData implements InstanceDataPusherInterface {
 
         this.data = data;
 
-        this.order();
-
         this.isInitiated = true;
 
         //todo in case of find() first() and limit we need to adjust the saving;
         //todo can we make instances after ordering?
+    }
+
+    public cut(data): any[] {
+        let array: any[];
+
+        if (this.page) {
+            let start: number = (this.page * this.amount) - this.amount;
+            let end: number = this.page * this.amount;
+            array = data.slice(start, end);
+        } else {
+            let start: number = 0;
+            let end: number = this.until * this.amount;
+            array = data.slice(start, end);
+        }
+
+        return array;
     }
 
     public order() {

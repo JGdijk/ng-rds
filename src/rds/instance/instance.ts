@@ -1,7 +1,8 @@
 import {Observable} from "rxjs";
-
 import {InstanceInterface} from "./instance.interface";
 import {InstanceDataController} from "./data/instance-data-controller";
+import {InstancePaginate} from "./extenders/instance-paginate";
+import {InstanceInfinite} from "./extenders/instance-infinite";
 
 export class Instance implements InstanceInterface {
 
@@ -10,6 +11,9 @@ export class Instance implements InstanceInterface {
     constructor(name: string) {
         this.data = new InstanceDataController(name);
     }
+
+    /*************************** retrieving ***************************
+     ******************************************************************/
 
     public find(id: number, obs: boolean = true): Observable<any> | any {
         this.data.setIds(id);
@@ -46,6 +50,48 @@ export class Instance implements InstanceInterface {
         this.data.setObserver(obs);
         return this.data.count();
     }
+
+    public paginate(amount: number, page: number, obs: boolean = true): Observable<any> | any {
+        this.data.setObserver(obs);
+        this.data.data.amount = amount;
+        this.data.paginate(page);
+    }
+
+    public infinite(amount: number, until: number , obs: boolean = true): Observable<any> | any  {
+        this.data.setObserver(obs);
+        this.data.data.until = until;
+        this.data.infinite(until);
+    }
+
+    /*************************** extenders ***************************
+     ******************************************************************/
+
+
+    public paginateBy(amount: number, obs: boolean = true): InstancePaginate {
+        this.data.setObserver(obs);
+        this.data.data.amount = amount;
+        return new InstancePaginate(this);
+    }
+
+    public infiniteBy(amount: number, obs: boolean = true): InstanceInfinite {
+        this.data.setObserver(obs);
+        this.data.data.amount = amount;
+        return new InstanceInfinite(this);
+    }
+
+    /** the return of the extenders*/
+
+    public page(page: number): Observable<any> | any {
+       return this.data.paginate(page);
+    }
+
+    public until(until: number): Observable<any> | any{
+        return this.data.infinite(until);
+    }
+
+
+    /*************************** statements ***************************
+     ******************************************************************/
 
     public where(key: string | any | any[], action?: string, value?: string | number): Instance {
         //todo make type for any[]
@@ -102,13 +148,13 @@ export class Instance implements InstanceInterface {
 
     public whereHas(key: string | string[], callback?: any): Instance {
         if (!Array.isArray(key)) {
-            this.data.addWhereStatement('whereHas', [{origin: this.data.key ,relation: key, callback: callback}]);
+            this.data.addWhereStatement('whereHas', [{origin: this.data.key, relation: key, callback: callback}]);
         } else {
-            if (callback){
+            if (callback) {
                 //todo throw big error now allowed with array
             }
             for (let s of key) {
-                this.data.addWhereStatement('whereHas', [{origin: this.data.key ,relation: s, callback: callback}]);
+                this.data.addWhereStatement('whereHas', [{origin: this.data.key, relation: s, callback: callback}]);
             }
         }
         return this;
@@ -116,15 +162,17 @@ export class Instance implements InstanceInterface {
 
     public whereNotHas(key: string | string[]): Instance {
         if (!Array.isArray(key)) {
-            this.data.addWhereStatement('whereNotHas', [{origin: this.data.key ,relation: key}]);
+            this.data.addWhereStatement('whereNotHas', [{origin: this.data.key, relation: key}]);
         } else {
             for (let s of key) {
-                this.data.addWhereStatement('whereNotHas', [{origin: this.data.key ,relation: s}]);
+                this.data.addWhereStatement('whereNotHas', [{origin: this.data.key, relation: s}]);
             }
         }
         return this;
     }
 
+    /*************************** joins ***************************
+     ******************************************************************/
 
     public join(key: string | string[], callback: any = null): Instance {
 
@@ -141,17 +189,23 @@ export class Instance implements InstanceInterface {
         return this;
     }
 
+    /*************************** orderBy ***************************
+     ******************************************************************/
+
     public orderBy(key: string | any[], order?: string): Instance { //todo make type
         if (order) {
             this.data.addOrderByStatement({key: key, order: order});
         } else {
-            for (let i = 0; i < key.length; i ++) {
+            for (let i = 0; i < key.length; i++) {
                 let s = key[i];
                 this.data.addOrderByStatement({key: s[0], order: s[1]})
             }
         }
         return this;
     }
+
+    /*************************** direct actions ***************************
+     ******************************************************************/
 
     public update(data: any): void {
         this.data.update(data);

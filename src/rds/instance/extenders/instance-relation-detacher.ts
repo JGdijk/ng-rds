@@ -6,7 +6,7 @@ export class InstanceRelationDetacher {
                 private relation: string,
                 private relation_ids: string| number | number[]) {}
 
-    public from(ids:  number | number[]){
+    public from(ids:  number | number[]): void{
         vault.detach(this.name, ids, this.relation, this.relation_ids);
     }
 }

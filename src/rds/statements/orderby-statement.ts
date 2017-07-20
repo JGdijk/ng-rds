@@ -7,6 +7,7 @@ export class OrderByStatement {
     }
 
     public order(data: any[]): any[] {
+        // todo we have to throw a big error when the key of the order doesn't exist on the object
         let statement = this.statement;
 
         if (statement.order.toLowerCase() !== 'desc' && statement.order.toLowerCase() !== 'asc') return; // todo trow big error

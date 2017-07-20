@@ -6,7 +6,7 @@ import {OrderByStatementController} from "./controllers/orderby-statement-contro
 import {JoinStatementController} from "./controllers/join-statement-controller";
 import {InstanceDataPusherInterface} from "../instance/data/instance-data-pusher.interface";
 
-export class JoinStatement implements InstanceDataPusherInterface{
+export class JoinStatement implements InstanceDataPusherInterface {
 
     public key: string;
 

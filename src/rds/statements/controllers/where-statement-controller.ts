@@ -1,5 +1,4 @@
 import {WhereStatementPocket} from "./where-statement-pocket";
-import {WhereCallback} from "./where-callback";
 import {WhereHasStatement} from "../wherehas-statement";
 import {WhereNotHasStatement} from "../wherenothas-statement";
 
@@ -159,12 +158,11 @@ export class WhereStatementController {
     }
 
     private addWhereCallback(callback: any): void {
-        new WhereCallback(this.pockets[0], callback, this.key);
+        this.pockets[0].addWhereCallback(callback, this.key);
     }
 
     private addOrWhereCallback(callback: any): void {
-        let pocket = this.addPocket();
-        new WhereCallback(pocket, callback, this.key);
+        this.addPocket().addWhereCallback(callback, this.key);
     }
 
 

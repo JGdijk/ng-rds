@@ -44,7 +44,6 @@ export class JoinCallback {
             this.statement.whereStatementController.add('orWhere', key)
         }
         return this;
-
     }
 
     public whereBetween(key: string, min: number, max: number): JoinCallback {

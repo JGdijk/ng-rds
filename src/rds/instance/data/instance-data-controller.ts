@@ -13,7 +13,7 @@ export class InstanceDataController {
 
     public key: string;
 
-    private data: InstanceData;
+    public data: InstanceData;
 
     /** add, update and remove classes */
     private adder: InstanceDataAdder;
@@ -67,6 +67,18 @@ export class InstanceDataController {
         return this.returnResults();
     }
 
+    public paginate(page: number): Observable<any> | any {
+        this.returnType = 'paginate';
+        this.data.page = page;
+        return this.returnResults();
+    }
+
+    public infinite(until: number): Observable<any> | any {
+        this.returnType = 'infinite';
+        this.data.until = until;
+        return this.returnResults();
+    }
+
     private returnResults(): Observable<any> | any {
         if (!this.observer) {
             return this.returnData();
@@ -94,6 +106,10 @@ export class InstanceDataController {
                 return this.data.getIdsOnly();
             case 'count':
                 return this.data.get().length;
+            case 'paginate':
+                return this.data.get();
+            case 'infinite':
+                return this.data.get();
         }
     }
 
@@ -133,12 +149,18 @@ export class InstanceDataController {
 
         let processUnit = new ProcessUnit(collector, this.data.data);
 
+        //check if the data needs to be adjusted according pagination
+        if (this.data.amount) this.fixDataForCut(processUnit);
+
         // adjust data according to the changed data
         processUnit.setData(this.removeCheck(processUnit));
         processUnit.setData(this.detachCheck(processUnit));
         processUnit.setData(this.updateCheck(processUnit));
         processUnit.setData(this.attachCheck(processUnit));
         processUnit.setData(this.addCheck(processUnit));
+
+        //check if the data needs to be adjusted according pagination
+        if (this.data.amount) this.fixDataForCutMerge(processUnit);
 
         if (processUnit.collector.isChecked()) {
             this.data.data = processUnit.data;
@@ -183,6 +205,48 @@ export class InstanceDataController {
 
     private broadcaster(): Observable<Collector> {
         return vault.broadcasting();
+    }
+
+    private fixDataForCut(processUnit: ProcessUnit): void {
+
+        let data: any[] = this.data.fetchFromStore();
+
+        if (this.data.whereStatementController.has()) {
+            data = this.data.whereStatementController.filter(data);
+        }
+
+        if (this.data.orderByStatementController.has()) {
+            data = this.data.orderByStatementController.init(data);
+        }
+
+        // only the paginated data
+        data = this.data.cut(data);
+
+        let primaryKey: string = vault.get(this.key).primaryKey;
+        processUnit.setBackup(data, primaryKey);
+    }
+
+    private fixDataForCutMerge(processUnit: ProcessUnit): void {
+
+        if (!processUnit.collector.isChecked()) return;
+
+        let array: any[] = processUnit.data;
+
+        let model: any = vault.get(this.key).model;
+
+        for (let obj of processUnit.backUp) {
+            if (this.data.joinStatementController.has()) {
+                array.push(this.data.joinStatementController.attach(new model(obj)));
+            } else {
+                array.push(new model(obj));
+            }
+        }
+
+        if (this.data.orderByStatementController.has()) {
+            array = this.data.orderByStatementController.init(array);
+        }
+
+        processUnit.setData(array);
     }
 
 }

@@ -5,6 +5,8 @@ import {InstanceInterface} from "./instance.interface";
 import {vault} from "../vault/vault";
 import {InstanceRelationAttacher} from "./extenders/instance-relation-attacher";
 import {InstanceRelationDetacher} from "./extenders/instance-relation-detacher";
+import {InstancePaginate} from "./extenders/instance-paginate";
+import {InstanceInfinite} from "./extenders/instance-infinite";
 
 
 export class InstanceController implements InstanceInterface {
@@ -34,8 +36,28 @@ export class InstanceController implements InstanceInterface {
         return this.getInstance().getIds(obs);
     }
 
+    // count
+
     public count(obs: boolean = true): Observable<any> | any {
         return this.getInstance().count(obs);
+    }
+
+    // pagination
+
+    public paginate(amount: number, page: number, obs: boolean = true): Observable<any> | any {
+        return this.getInstance().paginate(amount, page, obs);
+    }
+
+    public infinite(amount: number, until: number , obs: boolean = true): Observable<any> | any  {
+        return this.getInstance().infinite(amount, until, obs);
+    }
+
+    public paginateBy(amount: number, obs: boolean = true): InstancePaginate {
+        return this.getInstance().paginateBy(amount);
+    }
+
+    public infiniteBy(amount: number, obs: boolean = true): InstanceInfinite {
+        return this.getInstance().infiniteBy(amount);
     }
 
     /*************************** statements ***************************

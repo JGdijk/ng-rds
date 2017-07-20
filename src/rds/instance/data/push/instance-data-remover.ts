@@ -30,23 +30,23 @@ export class InstanceDataRemover extends InstanceDataPush{
         // if the collector doesn't contain any parent data we can move on
         if (!this.typeCollector.has(key)) return;
 
-        let data = this.typeCollector.copy(key);
+        let ids = this.typeCollector.copy(key);
 
         // check if it matches any id's
         if (this.data.hasIds()) {
-            data = this.filterIds(data);
+            ids = this.filterIds(ids);
         }
 
         let primaryKey = vault.get(key).primaryKey;
 
         let array: any[] = this.newData.filter(obj => {
-            for (let dataObj of data) {
-                if (dataObj[primaryKey] === obj[primaryKey]) {
-                    return true;
+            for (let id of ids) {
+                if (id === obj[primaryKey]) {
+                    this.collector.setChecked();
+                    return false;
                 }
             }
-            this.collector.setChecked();
-            return false;
+            return true;
         });
 
         this.newData = this.orderArray(this.data, array);
@@ -111,9 +111,12 @@ export class InstanceDataRemover extends InstanceDataPush{
     /*************************** Helper function ***************************
      ******************************************************************/
 
-    private filterIds(data: any[]): any[] {
-        return data.filter(id => () => {
-            if (this.data.ids === id) return true;
-        });
+    private filterIds(ids: number[]): any[] {
+        return ids.filter((id: number) => {
+            for (let dataId of this.data.ids) {
+                if (id === dataId) return true;
+            }
+            return false;
+        })
     }
 }

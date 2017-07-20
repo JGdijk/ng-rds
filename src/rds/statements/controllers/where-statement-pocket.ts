@@ -7,6 +7,8 @@ import {WhereNullStatement} from "../wherenull-statement";
 import {WhereNotNullStatement} from "../wherenotnull-statement";
 import {WhereHasStatement} from "../wherehas-statement";
 import {WhereNotHasStatement} from "../wherenothas-statement";
+import {WhereStatementController} from "./where-statement-controller";
+import {WhereCallback} from "./where-callback";
 
 export class WhereStatementPocket {
 
@@ -56,6 +58,19 @@ export class WhereStatementPocket {
                 this.whereNotHasStatements.push(new WhereNotHasStatement(statement));
                 break;
         }
+    }
+
+    public addWhereCallback(callback: any, key: string): void {
+        // creates the statement
+        let statement: WhereStatement = new WhereStatement();
+        statement.initController(key);
+        this.whereStatements.push(statement);
+
+        // grabs the controller
+        let controller: WhereStatementController = statement.whereStatementController;
+
+        // runs the callback
+        new WhereCallback(controller, callback, key);
     }
 
 

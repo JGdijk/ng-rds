@@ -10,7 +10,10 @@ export class UpdateCollector {
     /**
      * return the requested object by key and id.
      */
-    public get(target: string, id: number): any {
+    public get(target: string, id?: number): any {
+
+        if (!id) return this.data[target];
+
         let primaryKey: string = vault.get(target).primaryKey;
 
         for (let i in this.data[target]) {

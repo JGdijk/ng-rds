@@ -26,42 +26,100 @@ export class InstanceDataUpdater extends InstanceDataPush{
     
     //process the parent data;
     private processTarget(): void {
-        let key = this.data.key;
 
-        // if the collector doesn't contain any parent data we can move on
-        if (!this.typeCollector.has(key)) return;
+        // we go over every new object to check if it needs to be put in.
+        // then we go over every item that already exists to see if it needs to be replaced
+        // + we check if every items still checks the test.
 
+        let key: string = this.data.key;
+
+
+        // we filter out the new data
+        let updatedData: any[] = this.typeCollector.get(key);
+
+        if (updatedData) {
+            updatedData = this.data.whereStatementController.filter(updatedData);
+        }
+
+
+        // we make a new array to return + set a check boolean if we need to return
         let array: any[] = [];
         let check: boolean;
+
 
         let primaryKey: string = vault.get(this.data.key).primaryKey;
         let keys: string[] = vault.get(this.data.key).relations.objectKeys();
         let model: any = vault.get(this.data.key).model;
 
-        for (let obj of this.newData) {
-            // checks if the object needs to be updated
-            let result: any = this.typeCollector.get(this.data.key, obj[primaryKey]);
+        outerLoop: for (let obj of this.newData) {
 
-            if (!result) {
-                array.push(obj);
-                continue;
-            }
-
-            // if the new updated object doesn't pass the where anymore whe remove it from the array
-            if (this.data.whereStatementController.has) {
-                if (!this.data.whereStatementController.check(result)) {
+            if (this.data.whereStatementController.has()) {
+                if (!this.data.whereStatementController.check(obj)) {
                     check = true;
                     continue;
                 }
             }
 
-            // we now know we will update a object
+            // checks if the object needs to be updated
+            if (updatedData) {
+                for (let i in updatedData) {
+                    let newObj: any = updatedData[i];
+
+                    if (newObj[primaryKey] !== obj[primaryKey]) continue;
+
+                    // we have found a match
+                    check = true;
+
+                    // if it passes we add it to the array
+                    newObj = this.transferRelations(keys, obj, newObj);
+                    array.push(new model(newObj));
+
+
+                    delete updatedData[i];
+                    continue outerLoop;
+                }
+            }
+
+
+            array.push(obj);
+        }
+
+        // new data that wasn't in the array before but that now passes the where check
+        if (updatedData && updatedData.length > 0) {
             check = true;
 
-            // we still need to transfer the relations and make a model out of the object
-            let newObj = this.transferRelations(keys, obj, result);
-            array.push(new model(newObj));
+            for (let newObj of updatedData) {
+                if (this.data.joinStatementController.has()) {
+                    array.push(new model(this.data.joinStatementController.attach(newObj)))
+                } else {
+                    array.push(new model(newObj))
+                }
+            }
         }
+
+        // if there is a whereHas, things will be more complicated and all needs to be checked
+        if (this.data.whereStatementController.hasWhereHas() || this.data.whereStatementController.hasWhereNotHas()) {
+            let objects: any[] = vault.get(this.data.key).data.get();
+            objects = this.data.whereStatementController.filter(objects);
+
+            if (objects.length > 0 ) {
+                objectsLoop: for (let obj of objects) {
+                    for (let arrayObj of array) {
+                        if (arrayObj[primaryKey] === obj[primaryKey]) continue objectsLoop
+                    }
+
+                    check = true;
+
+                    if (this.data.joinStatementController.has()) {
+                        array.push(new model(this.data.joinStatementController.attach(obj)))
+                    } else {
+                        array.push(new model(obj))
+                    }
+
+                }
+            }
+        }
+
 
         if (check) {
             this.collector.setChecked();
@@ -79,21 +137,38 @@ export class InstanceDataUpdater extends InstanceDataPush{
         // if the dataObject has the relation
         let relation: any = dataObject[statement.objectKey()];
 
-        // if this object doesn't have the relation there is no need to update
-        if (!relation) return;
+        let primaryKeyOrigin: string = vault.get(statement.origin).primaryKey;
+        let model: any = vault.get(statement.key).model;
 
+        //if no relations is presented
+        if (!relation) {
+             relation = vault.get(statement.origin).getRelations(statement.key, dataObject[primaryKeyOrigin]).data;
+
+            // check if there is a relation
+            if (!relation) return;
+
+            // check if it passes the check (if so add)
+            if (!statement.whereStatementController.check(relation)) return;
+
+            if (!statement.joinStatementController.has()) {
+                return new model(relation);
+            } else {
+                return new model(statement.joinStatementController.attach(relation));
+            }
+        }
+
+
+        //if relation is presented
+
+        // checks if the relation still passes the where check
+        if (!statement.whereStatementController.check(relation)) return;
+
+        let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
         let check: boolean;
 
         // checks if the relation itself needs to be altered
-        let primaryKey: string = vault.get(statement.key).primaryKey;
-        let collectorResult: any = this.typeCollector.get(statement.key, relation[primaryKey]);
+        let collectorResult: any = this.typeCollector.get(statement.key, relation[primaryKeyRelation]);
         if (collectorResult) {
-
-            //checks if it still passes the update, if not we return null object
-            if (statement.whereStatementController && statement.whereStatementController.has()) {
-                if (!statement.whereStatementController.check(collectorResult)) return {data: null}
-            }
-
             check = true;
 
             let keys: string[] = statement.joinStatementController.objectKeys();
@@ -104,6 +179,7 @@ export class InstanceDataUpdater extends InstanceDataPush{
             let model: any = vault.get(statement.key).model;
             relation = new model(obj);
         }
+
 
         //we check if there is an existing relation object and if it has any nested relation that will be altered
         let nestedResult: any = this.checkRelationData(statement, relation);
@@ -124,34 +200,57 @@ export class InstanceDataUpdater extends InstanceDataPush{
         // the relations
         let relations : any[] = dataObject[statement.objectKey()];
 
-        if (relations.length === 0) return;
+        let primaryKeyOrigin: string = vault.get(statement.origin).primaryKey;
+        let model: any = vault.get(statement.key).model;
 
+        //if no relations
+        if (relations.length === 0) {
+
+            // we have to check if there is a whereStatement
+            if (!statement.whereStatementController.has()) return;
+
+            // grab relations + filter them
+            relations = vault.get(statement.origin).getRelations(statement.key, dataObject[primaryKeyOrigin]).data;
+            relations = statement.whereStatementController.filter(relations);
+
+            if (relations.length === 0) return;
+
+            let returnArray: any[] = [];
+
+            for (let relation of relations) {
+                if (!statement.joinStatementController.has()) {
+                    returnArray.push(new model(relation));
+                } else {
+                    returnArray.push(new model(statement.joinStatementController.attach(relation)));
+                }
+            }
+
+            return {data: returnArray}; // todo make this a function so it's better looking + easier to use
+        }
+
+        // if relation
         let array: any[] = [];
         let check: boolean = false;
 
-        let primaryKey: string = vault.get(statement.key).primaryKey;
+        let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
         let keys: string[] = vault.get(statement.key).relations.objectKeys();
-        let model: any = vault.get(statement.key).model;
 
         // for every relation we going to check if it's updated or not
         for (let relationObj of relations) {
+
+            if (statement.whereStatementController.has()) {
+                if (!statement.whereStatementController.check(relationObj)) {
+                    check = true;
+                    continue;
+                }
+            }
 
             let innerCheck: boolean;
             let relation: any = relationObj;
 
             // checks if the object itself needs to be updated
-            let collectorResult = this.typeCollector.get(statement.key, relation[primaryKey]);
+            let collectorResult = this.typeCollector.get(statement.key, relation[primaryKeyRelation]);
             if (collectorResult) {
-
-                // checks if it still passes the where statements
-                if (statement.whereStatementController && statement.whereStatementController.has()) {
-                    // if it doesn't we continue
-                    if (!statement.whereStatementController.check(collectorResult)) {
-                        // we still need to make check truthy because now we might need to send back an empty array
-                        check = true;
-                        continue;
-                    }
-                }
 
                 innerCheck = true;
                 let newObj: any = this.transferRelations(keys, relation, collectorResult);
@@ -165,6 +264,7 @@ export class InstanceDataUpdater extends InstanceDataPush{
                 relation = result;
             }
 
+
             if (innerCheck) {
                 check = true;
                 array.push(relation);
@@ -172,6 +272,32 @@ export class InstanceDataUpdater extends InstanceDataPush{
                 array.push(relationObj);
             }
         }
+
+        // we need to check if there is new data that should be included after the update
+        if (statement.whereStatementController.has()) {
+            let newRelations: any[] = vault.get(statement.origin)
+                .getRelations(statement.key, dataObject[primaryKeyOrigin]).data;
+            newRelations = statement.whereStatementController.filter(newRelations);
+
+            if (newRelations.length > 0) {
+                newRelationLoop: for (let newRelation of newRelations) {
+                    for (let obj of array) {
+                        if (newRelation[primaryKeyRelation] !== obj[primaryKeyRelation]) continue;
+
+                        check = true;
+
+                        if (!statement.joinStatementController.has()) {
+                            array.push(new model(newRelation))
+                        } else {
+                            array.push(new model(statement.joinStatementController.attach(newRelation)))
+                        }
+
+                        continue newRelationLoop;
+                    }
+                }
+            }
+        }
+
         if (check) return {data: this.orderArray(statement, array)};
     }
 
