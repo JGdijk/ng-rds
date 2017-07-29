@@ -57,9 +57,11 @@ We are also able to make more complicated statements:
 
 ```javascript
 projectRds
+    .where('random', '>', 2)
     .where((callback: WhereCallback) => callback
         .whereHas('Task', (cb: WhereHasCallback) => cb
             .where('random', '>', 32)))
+        .orWhere('name', '=', 'project2')
     .get().subscribe((projects: Project[]) => {
         console.log(projects);
     });
