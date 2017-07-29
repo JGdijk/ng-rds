@@ -64,7 +64,6 @@ export class InstanceDataAttacher extends InstanceDataPush{
 
         let array: any[] = objectsArray.filter((obj: any) => {
             if (controller.check(obj)) return true;
-            modelStamps.removed(obj);
             check = true;
             return false;
         });
@@ -190,7 +189,6 @@ export class InstanceDataAttacher extends InstanceDataPush{
 
             //checks if it needs to be detached (whereHasNot)
             if (this.checkDetachSingle(statement, relation)){
-                modelStamps.removed(relation);
                 return {data: null}
             }
 
@@ -349,7 +347,6 @@ export class InstanceDataAttacher extends InstanceDataPush{
                 return true;
             } else {
                 check = true;
-                modelStamps.removed(obj);
                 return false;
             }
         });

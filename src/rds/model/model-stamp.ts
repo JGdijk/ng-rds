@@ -3,6 +3,5 @@ export interface ModelStamp {
     added: boolean
     updated: boolean
     relationUpdated: boolean
-    removed: boolean
     timestamp: number
 }

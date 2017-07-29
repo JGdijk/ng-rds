@@ -57,7 +57,6 @@ export class InstanceDataUpdater extends InstanceDataPush{
             if (this.data.whereStatementController.has()) {
                 if (!this.data.whereStatementController.check(obj)) {
                     check = true;
-                    modelStamps.removed(obj);
                     continue;
                 }
             }
@@ -174,7 +173,6 @@ export class InstanceDataUpdater extends InstanceDataPush{
 
         // checks if the relation still passes the where check
         if (!statement.whereStatementController.check(relation)) {
-            modelStamps.removed(relation);
             return {data: null}
         }
 
@@ -259,7 +257,6 @@ export class InstanceDataUpdater extends InstanceDataPush{
             if (statement.whereStatementController.has()) {
                 if (!statement.whereStatementController.check(relationObj)) {
                     check = true;
-                    modelStamps.removed(relationObj);
                     continue;
                 }
             }

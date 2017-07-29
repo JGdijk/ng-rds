@@ -19,12 +19,6 @@ export class ModelStamps {
         return this.set(model, time, 'relationUpdated');
     }
 
-    public removed(model: Model): Model {
-        model.modelStamp.removed = true;
-        return model;
-        // return this.set(model, time, 'removed');
-    }
-
     /*************************** helpers ***************************
      ******************************************************************/
 
@@ -47,7 +41,6 @@ export class ModelStamps {
             added: false,
             updated: false,
             relationUpdated: false,
-            removed: false,
             timestamp: time
         }
     }

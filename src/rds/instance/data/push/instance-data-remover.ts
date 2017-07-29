@@ -44,7 +44,6 @@ export class InstanceDataRemover extends InstanceDataPush{
             for (let id of ids) {
                 if (id === obj[primaryKey]) {
                     this.collector.setChecked();
-                    modelStamps.removed(obj);
                     return false;
                 }
             }
@@ -68,7 +67,6 @@ export class InstanceDataRemover extends InstanceDataPush{
 
         //checks if the relation object needs to be deleted
         if (this.typeCollector.check(statement.key, relation[primaryKey])) {
-            modelStamps.removed(relation);
             return {data: null};
         }
 
@@ -93,7 +91,6 @@ export class InstanceDataRemover extends InstanceDataPush{
             //if the relation needs to be removed, simply don't push it to the new array
             if (this.typeCollector.check(statement.key, relation[primaryKey])) {
                 check = true;
-                modelStamps.removed(relation);
                 continue;
             }
 
