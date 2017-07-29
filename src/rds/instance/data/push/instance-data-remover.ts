@@ -2,6 +2,7 @@ import {vault} from "../../../vault/vault";
 import {ProcessUnit} from "../../../process/process-unit";
 import {JoinStatement} from "../../../statements/join-statement";
 import {InstanceDataPush} from "./instance-data-push";
+import {modelStamps} from "../../../model/model-stamps";
 
 export class InstanceDataRemover extends InstanceDataPush{
 
@@ -43,6 +44,7 @@ export class InstanceDataRemover extends InstanceDataPush{
             for (let id of ids) {
                 if (id === obj[primaryKey]) {
                     this.collector.setChecked();
+                    modelStamps.removed(obj);
                     return false;
                 }
             }
@@ -65,7 +67,10 @@ export class InstanceDataRemover extends InstanceDataPush{
         let primaryKey: string = vault.get(statement.key).primaryKey;
 
         //checks if the relation object needs to be deleted
-        if (this.typeCollector.check(statement.key, relation[primaryKey])) return {data: null}; //todo not nice
+        if (this.typeCollector.check(statement.key, relation[primaryKey])) {
+            modelStamps.removed(relation);
+            return {data: null};
+        }
 
         // will delete any nested object if needed
         let result: any = this.checkRelationData(statement, relation);
@@ -88,6 +93,7 @@ export class InstanceDataRemover extends InstanceDataPush{
             //if the relation needs to be removed, simply don't push it to the new array
             if (this.typeCollector.check(statement.key, relation[primaryKey])) {
                 check = true;
+                modelStamps.removed(relation);
                 continue;
             }
 

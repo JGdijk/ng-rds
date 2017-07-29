@@ -47,7 +47,6 @@ export class VaultObject {
             }
             return;
         }
-
         // now we have to check if each object has any relation info
         for (let obj of objects) {
             for (let key of this.relations.keys()) {
@@ -82,8 +81,6 @@ export class VaultObject {
             this.data.add(obj);
             collector.add(this.name, obj);
         }
-
-        return
     }
 
     public update(ids: number[], data: any, collector: Collector): Collector {

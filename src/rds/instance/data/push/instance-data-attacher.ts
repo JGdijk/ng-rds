@@ -5,13 +5,14 @@ import {JoinStatement} from "../../../statements/join-statement";
 import {WhereStatementController} from "../../../statements/controllers/where-statement-controller";
 import {InstanceDataPush} from "./instance-data-push";
 import {whereHasCheck} from "./where-has-checks/where-has-checker";
+import {modelStamps} from "../../../model/model-stamps";
 
 export class InstanceDataAttacher extends InstanceDataPush{
 
     protected type: string = 'attach';
 
     public run(processUnit: ProcessUnit): any[] {
-;
+
         if (!this.checkKeys(processUnit.collector)) return;
 
         this.init(processUnit);
@@ -63,7 +64,7 @@ export class InstanceDataAttacher extends InstanceDataPush{
 
         let array: any[] = objectsArray.filter((obj: any) => {
             if (controller.check(obj)) return true;
-
+            modelStamps.removed(obj);
             check = true;
             return false;
         });
@@ -167,6 +168,8 @@ export class InstanceDataAttacher extends InstanceDataPush{
             // if it has any relations attach it
             if (joinStatement && joinStatement.has() && !this.data.primaryOnly) newObj = joinStatement.attach(newObj);
 
+            modelStamps.added(newObj, this.collector.timeStamp);
+
             array.push(newObj);
         }
 
@@ -186,7 +189,10 @@ export class InstanceDataAttacher extends InstanceDataPush{
         if (relation) {
 
             //checks if it needs to be detached (whereHasNot)
-            if (this.checkDetachSingle(statement, relation)) return {data: null};
+            if (this.checkDetachSingle(statement, relation)){
+                modelStamps.removed(relation);
+                return {data: null}
+            }
 
             //checks if any nested adjustments have to be made
             let result = this.checkRelationData(statement, relation);
@@ -207,12 +213,17 @@ export class InstanceDataAttacher extends InstanceDataPush{
                     || statement.whereStatementController.check(obj)
                 ) {
                     let model: any = vault.get(statement.key).model;
-                    return {data: statement.attach(statement.origin, new model(obj))}
+                    let newModel = modelStamps.added(new model(obj), this.collector.timeStamp);
+
+                    // here it returns if something needs to be added
+                    return {data: statement.attach(statement.origin, newModel)}
                 }
             }
         }
 
         // checks if it needs to be attached (because of whereHas)
+        // this checks for whereHas, if there is no whereHas this will be skipped.
+        // the other code doesn't pick up a deeply nested wherehas relation
         let result = this.checkAttachSingle(statement, dataObject);
         if (result) return {data: result};
 
@@ -232,15 +243,17 @@ export class InstanceDataAttacher extends InstanceDataPush{
         // we check if we need to detach something according to whereHasNot
         let result: any[] = this.checkDetachArray(statement, relations);
         if (result) {
-            array = result;
+            // array = result;
             check = true;
         } else {
-            array = relations;
+            result = relations;
         }
 
+
         // we check every object if the relations have been changed, push according to the result
-        for (let obj of array) {
+        for (let obj of result) {
             let resultNested: any = this.checkRelationData(statement, obj);
+
             if (resultNested) {
                 check = true;
                 array.push(resultNested);
@@ -278,10 +291,13 @@ export class InstanceDataAttacher extends InstanceDataPush{
                 let model: any = vault.get(statement.key).model;
 
                 for (let obj of newCollectorObjects) {
+
+                    let newModel = modelStamps.added(new model(obj), this.collector.timeStamp);
+
                     if (statement.has()) {
-                        array.push(statement.attach(statement.origin, new model(obj)))
+                        array.push(statement.attach(statement.origin, newModel))
                     } else {
-                        array.push(new model(obj));
+                        array.push(newModel);
                     }
 
                 }
@@ -333,6 +349,7 @@ export class InstanceDataAttacher extends InstanceDataPush{
                 return true;
             } else {
                 check = true;
+                modelStamps.removed(obj);
                 return false;
             }
         });
@@ -362,9 +379,11 @@ export class InstanceDataAttacher extends InstanceDataPush{
         // makes a model of it + get nested relations;
         let model: any = vault.get(statement.key).model;
 
+        let newModel = modelStamps.added(new model(result), this.collector.timeStamp);
+
         return (statement.has())
-            ? statement.joinStatementController.attach(new model(result))
-            : new model(result)
+            ? statement.joinStatementController.attach(newModel)
+            : newModel
     }
 
     /**
@@ -413,11 +432,13 @@ export class InstanceDataAttacher extends InstanceDataPush{
         let model: any = vault.get(statement.key).model;
         for (let obj of newObjects) {
 
+            let newModel = modelStamps.added(new model(obj), this.collector.timeStamp);
+
             // if there are nested relations add them, if not just the model
             if (statement.has()) {
-                array.push(statement.attach(statement.key, new model(obj)));
+                array.push(statement.attach(statement.key, newModel));
             } else {
-                array.push(new model(obj));
+                array.push(newModel);
             }
 
         }

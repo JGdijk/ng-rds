@@ -1,4 +1,5 @@
 import {vault} from "../vault/vault";
+import {ModelStamp} from "./model-stamp";
 
 export type ModelRelation = {
     type: string,
@@ -48,7 +49,7 @@ export class Model{
         vault.remove(this.constructor.name, this[vault.get(this.constructor.name).primaryKey])
     }
 
-    public attach(relation: string, ids: number | number[]) {
+    public attach(relation: string, ids: number | number[]): void {
         vault.attach(
             this.constructor.name,
             this[vault.get(this.constructor.name).primaryKey],
@@ -57,7 +58,7 @@ export class Model{
         );
     }
 
-    public detach(relation: string, ids: string | number | number[]) {
+    public detach(relation: string, ids: string | number | number[]): void {
         vault.detach(
             this.constructor.name,
             this[vault.get(this.constructor.name).primaryKey],
@@ -65,4 +66,10 @@ export class Model{
             ids
         );
     }
+
+    public modelStamp: ModelStamp;
+
+    // public modelStamp(): ModelStamp {
+    //     return this.constructor.prototype.modelStamp;
+    // };
 }

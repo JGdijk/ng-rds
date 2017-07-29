@@ -3,6 +3,7 @@ import {JoinStatementController} from "../../statements/controllers/join-stateme
 import {OrderByStatementController} from "../../statements/controllers/orderby-statement-controller";
 import {vault} from "../../vault/vault";
 import {InstanceDataPusherInterface} from "./instance-data-pusher.interface";
+import {modelStamps} from "../../model/model-stamps";
 
 export class InstanceData implements InstanceDataPusherInterface {
 
@@ -186,7 +187,9 @@ export class InstanceData implements InstanceDataPusherInterface {
         let returnData: any[] = [];
 
         for (let obj of data) {
-            returnData.push(new model(obj))
+            let newModel = new model(obj);
+            modelStamps.init(newModel);
+            returnData.push(newModel)
         }
         return returnData;
     }

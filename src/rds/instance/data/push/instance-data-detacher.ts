@@ -5,8 +5,9 @@ import {JoinStatement} from "../../../statements/join-statement";
 import {WhereStatementController} from "../../../statements/controllers/where-statement-controller";
 import {InstanceDataPush} from "./instance-data-push";
 import {whereNotHasCheck} from "./where-has-checks/where-has-not-checker";
+import {modelStamps} from "../../../model/model-stamps";
 
-export class InstanceDataDetacher extends InstanceDataPush{
+export class InstanceDataDetacher extends InstanceDataPush {
 
     protected type: string = 'detach';
 
@@ -57,15 +58,16 @@ export class InstanceDataDetacher extends InstanceDataPush{
      * returns true if there is no whereHas statement or if it passes the whereHas check
      * this function removes objects if needed
      */
-    private checkWhereHas(controller: WhereStatementController, objectsArray: any[]) : any[] {
+    private checkWhereHas(controller: WhereStatementController, objectsArray: any[]): any[] {
 
         // checks if there is a whereHas
         if (!controller.hasWhereHas()) return;
 
         let check: boolean = false;
 
-        let array: any[] =  objectsArray.filter((obj: any) => {
+        let array: any[] = objectsArray.filter((obj: any) => {
             if (controller.check(obj)) return true;
+            modelStamps.removed(obj);
             check = true;
             return false;
         });
@@ -127,11 +129,11 @@ export class InstanceDataDetacher extends InstanceDataPush{
         let model: any = vault.get(whereStatement.key).model;
         // make models and push the new objects
         for (let obj of newObjects) {
-            let newObj: any = new model(obj);
+            let newObj: any = modelStamps.added(new model(obj), this.collector.timeStamp);
 
             // if it has any relations attach it
             if (joinStatement && joinStatement.has()) {
-               array.push(joinStatement.attach(newObj))
+                array.push(joinStatement.attach(newObj))
             } else {
                 array.push(newObj);
             }
@@ -158,12 +160,27 @@ export class InstanceDataDetacher extends InstanceDataPush{
             return;
         }
 
-        // check for detach
-        if (statement.whereStatementController && statement.whereStatementController.hasWhereHas()) {
-            if (!statement.whereStatementController.check(relation)) {
-                return {data: null}
-            }
+        let primaryKeyOrigin: string = vault.get(statement.origin).primaryKey;
+        let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
+
+        // check for normal detach
+        if (!this.typeCollector.check(
+                statement.origin,
+                dataObject[primaryKeyOrigin],
+                statement.key,
+                relation[primaryKeyRelation]
+        )) {
+            modelStamps.removed(relation);
+            return {data: null}
         }
+
+        // check for detach on whereHas
+            if (statement.whereStatementController && statement.whereStatementController.hasWhereHas()) {
+                if (!statement.whereStatementController.check(relation)) {
+                    modelStamps.removed(relation);
+                    return {data: null}
+                }
+            }
 
         // check for nested result if so return the new object;
         let nestedResult: any = this.checkRelationData(statement, relation);
@@ -178,7 +195,7 @@ export class InstanceDataDetacher extends InstanceDataPush{
      */
     protected checkRelationStatementArray(statement: JoinStatement, dataObject: any): any {
         // the relations
-        let relations : any[] = dataObject[statement.objectKey()];
+        let relations: any[] = dataObject[statement.objectKey()];
 
         // if there are no existing relations we check if the needed to be added according to whereNotHas
         if (relations.length === 0) {
@@ -194,9 +211,25 @@ export class InstanceDataDetacher extends InstanceDataPush{
         // we check if any of the existing data needs to be altered
         for (let relation of relations) {
 
+            let primaryKeyOrigin: string = vault.get(statement.origin).primaryKey;
+            let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
+
+            // check for normal detach
+            if (this.typeCollector.check(
+                    statement.origin,
+                    dataObject[primaryKeyOrigin],
+                    statement.key,
+                    relation[primaryKeyRelation]
+                )) {
+                check = true;
+                modelStamps.removed(relation);
+                continue;
+            }
+
             // check if it still passes the where check;
             if (!statement.whereStatementController.check(relation)) {
                 check = true;
+                modelStamps.removed(relation);
                 continue;
             }
 
@@ -226,9 +259,8 @@ export class InstanceDataDetacher extends InstanceDataPush{
 
         // if there is no hasWhereNot has return;
         if (!statement.whereStatementController || (
-            !statement.whereStatementController.hasWhereNotHas() &&
-            !statement.whereStatementController.hasWhereHas()
-        )) return;
+                !statement.whereStatementController.hasWhereNotHas() && !statement.whereStatementController.hasWhereHas()
+            )) return;
 
         let primaryKey: string = vault.get(statement.origin).primaryKey;
 
@@ -243,17 +275,17 @@ export class InstanceDataDetacher extends InstanceDataPush{
 
         // makes a model of it + get nested relations;
         let model: any = vault.get(statement.key).model;
+        let newModel = modelStamps.added(new model(result), this.collector.timeStamp);
         return (statement.has())
-            ? statement.joinStatementController.attach(new model(result))
-            : new model(result)
+            ? statement.joinStatementController.attach(newModel)
+            : newModel
     }
 
-    private checkAttachArray(statement:JoinStatement, dataObject: any, relationArray: any[] = null): any[] {
+    private checkAttachArray(statement: JoinStatement, dataObject: any, relationArray: any[] = null): any[] {
 
         // if there is no hasWhereNot has return;
         if (!statement.whereStatementController || (
-                !statement.whereStatementController.hasWhereNotHas() &&
-                !statement.whereStatementController.hasWhereHas()
+                !statement.whereStatementController.hasWhereNotHas() && !statement.whereStatementController.hasWhereHas()
             )
         ) return;
 
@@ -267,7 +299,7 @@ export class InstanceDataDetacher extends InstanceDataPush{
 
         // if we want to check against existing data we only filter the ids that are not in the existing data
         if (relationArray) {
-            ids = ids.filter((id:number) => {
+            ids = ids.filter((id: number) => {
                 for (let relation of relationArray) {
                     if (relation[primaryKey] === id) return false;
                 }
@@ -290,11 +322,12 @@ export class InstanceDataDetacher extends InstanceDataPush{
 
         // we still have to make models of them
         for (let obj of newObjects) {
+            let newModel = modelStamps.added(new model(obj), this.collector.timeStamp);
             // if there are nested relations add them, if not just the model
             if (statement.has()) {
-                newModels.push(statement.attach(statement.key, new model(obj)));
+                newModels.push(statement.attach(statement.key, newModel));
             } else {
-                newModels.push(new model(obj));
+                newModels.push(newModel);
             }
         }
 

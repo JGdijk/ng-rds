@@ -2,6 +2,7 @@ import {vault} from "../../../vault/vault";
 import {JoinStatement} from "../../../statements/join-statement";
 import {ProcessUnit} from "../../../process/process-unit";
 import {InstanceDataPush} from "./instance-data-push";
+import {modelStamps} from "../../../model/model-stamps";
 
 export class InstanceDataAdder extends InstanceDataPush {
 
@@ -66,10 +67,13 @@ export class InstanceDataAdder extends InstanceDataPush {
                     continue dataLoop;
                 }
             }
+
+            let newModel = modelStamps.added(new model(obj), this.collector.timeStamp);
+
             if (this.data.primaryOnly) {
-                newData.push(new model(obj));
+                newData.push(newModel);
             } else {
-                newData.push(this.data.joinStatementController.attach(new model(obj)));
+                newData.push(this.data.joinStatementController.attach(newModel));
             }
         }
 
@@ -80,7 +84,8 @@ export class InstanceDataAdder extends InstanceDataPush {
             for (let obj of replaceData) {
                 if (currentObj[primaryKey] === obj[primaryKey]) {
                     //makes a new model and transfers the relations
-                    let newModel = new model(obj);
+                    //todo is this updated / overwritten or added
+                    let newModel = modelStamps.updated(new model(obj), this.collector.timeStamp);
                     newModel = this.transferRelations(keys, currentObj, newModel);
 
                     array.push(newModel);
@@ -91,7 +96,7 @@ export class InstanceDataAdder extends InstanceDataPush {
             array.push(currentObj);
         }
 
-        // finally we add the final objects
+        // finally we add the final objects todo we can push on new data array
         for (let obj of newData) {
             array.push(obj);
         }
@@ -128,7 +133,7 @@ export class InstanceDataAdder extends InstanceDataPush {
 
             // we do need to return a new model;
             let model: any = vault.get(statement.origin).model;
-            relation = new model(obj);
+            relation = modelStamps.added(new model(obj), this.collector.timeStamp);
         }
 
         if (check) return {data: relation};
@@ -199,6 +204,7 @@ export class InstanceDataAdder extends InstanceDataPush {
                 if (obj[primaryKey] === relation[primaryKey]) {
 
                     let newObj: any = new model(obj);
+                    newObj = modelStamps.added(newObj, this.collector.timeStamp);
                     newObjects.push(this.transferRelations(keys, relation, newObj));
 
                     continue arrayLoop;

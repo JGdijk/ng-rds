@@ -14,6 +14,8 @@ export class Collector {
 
     private checked: boolean = false;
 
+    public timeStamp: number;
+
     public constructor(addCollector?: AddCollector,
                        updateCollector?: UpdateCollector,
                        removeCollector?: RemoveCollector,
@@ -25,6 +27,8 @@ export class Collector {
         this.removeCollector = (removeCollector) ? removeCollector : new RemoveCollector();
         this.attachCollector = (attachCollector) ? attachCollector : new AttachCollector();
         this.detachCollector = (detachCollector) ? detachCollector : new DetachCollector();
+
+        this.timeStamp = Date.now();
     }
 
     public copy(): Collector {

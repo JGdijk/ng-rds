@@ -2,6 +2,7 @@ import {vault} from "../../../vault/vault";
 import {JoinStatement} from "../../../statements/join-statement";
 import {ProcessUnit} from "../../../process/process-unit";
 import {InstanceDataPush} from "./instance-data-push";
+import {modelStamps} from "../../../model/model-stamps";
 
 export class InstanceDataUpdater extends InstanceDataPush{
 
@@ -56,6 +57,7 @@ export class InstanceDataUpdater extends InstanceDataPush{
             if (this.data.whereStatementController.has()) {
                 if (!this.data.whereStatementController.check(obj)) {
                     check = true;
+                    modelStamps.removed(obj);
                     continue;
                 }
             }
@@ -72,10 +74,14 @@ export class InstanceDataUpdater extends InstanceDataPush{
 
                     // if it passes we add it to the array
                     newObj = this.transferRelations(keys, obj, newObj);
-                    array.push(new model(newObj));
 
+                    let newModel = new model(newObj);
+                    modelStamps.updated(newModel, this.collector.timeStamp);
 
-                    delete updatedData[i];
+                    array.push(newModel);
+
+                    let key: any = i;
+                    updatedData.splice(key, 1);
                     continue outerLoop;
                 }
             }
@@ -89,15 +95,18 @@ export class InstanceDataUpdater extends InstanceDataPush{
             check = true;
 
             for (let newObj of updatedData) {
+                let newModel = modelStamps.added(new model(newObj), this.collector.timeStamp);
+
                 if (this.data.joinStatementController.has()) {
-                    array.push(new model(this.data.joinStatementController.attach(newObj)))
+                    array.push(this.data.joinStatementController.attach(newModel))
                 } else {
-                    array.push(new model(newObj))
+                    array.push(newModel)
                 }
             }
         }
 
         // if there is a whereHas, things will be more complicated and all needs to be checked
+        // todo optimize
         if (this.data.whereStatementController.hasWhereHas() || this.data.whereStatementController.hasWhereNotHas()) {
             let objects: any[] = vault.get(this.data.key).data.get();
             objects = this.data.whereStatementController.filter(objects);
@@ -109,11 +118,12 @@ export class InstanceDataUpdater extends InstanceDataPush{
                     }
 
                     check = true;
+                    let newModel = modelStamps.added(new model(obj), this.collector.timeStamp);
 
                     if (this.data.joinStatementController.has()) {
-                        array.push(new model(this.data.joinStatementController.attach(obj)))
+                        array.push(this.data.joinStatementController.attach(newModel))
                     } else {
-                        array.push(new model(obj))
+                        array.push(newModel)
                     }
 
                 }
@@ -150,10 +160,12 @@ export class InstanceDataUpdater extends InstanceDataPush{
             // check if it passes the check (if so add)
             if (!statement.whereStatementController.check(relation)) return;
 
+            let newModel = modelStamps.added(new model(relation), this.collector.timeStamp);
+
             if (!statement.joinStatementController.has()) {
-                return new model(relation);
+                return newModel;
             } else {
-                return new model(statement.joinStatementController.attach(relation));
+                return statement.joinStatementController.attach(newModel);
             }
         }
 
@@ -161,7 +173,10 @@ export class InstanceDataUpdater extends InstanceDataPush{
         //if relation is presented
 
         // checks if the relation still passes the where check
-        if (!statement.whereStatementController.check(relation)) return;
+        if (!statement.whereStatementController.check(relation)) {
+            modelStamps.removed(relation);
+            return {data: null}
+        }
 
         let primaryKeyRelation: string = vault.get(statement.key).primaryKey;
         let check: boolean;
@@ -177,7 +192,7 @@ export class InstanceDataUpdater extends InstanceDataPush{
 
             // we do need to return a new model;
             let model: any = vault.get(statement.key).model;
-            relation = new model(obj);
+            relation = modelStamps.updated(new model(obj), this.collector.timeStamp);
         }
 
 
@@ -218,14 +233,17 @@ export class InstanceDataUpdater extends InstanceDataPush{
             let returnArray: any[] = [];
 
             for (let relation of relations) {
+
+                let newModel = modelStamps.added(new model(relation), this.collector.timeStamp);
+
                 if (!statement.joinStatementController.has()) {
-                    returnArray.push(new model(relation));
+                    returnArray.push(newModel);
                 } else {
-                    returnArray.push(new model(statement.joinStatementController.attach(relation)));
+                    returnArray.push(statement.joinStatementController.attach(newModel));
                 }
             }
 
-            return {data: returnArray}; // todo make this a function so it's better looking + easier to use
+            return {data: returnArray};
         }
 
         // if relation
@@ -241,6 +259,7 @@ export class InstanceDataUpdater extends InstanceDataPush{
             if (statement.whereStatementController.has()) {
                 if (!statement.whereStatementController.check(relationObj)) {
                     check = true;
+                    modelStamps.removed(relationObj);
                     continue;
                 }
             }
@@ -251,10 +270,9 @@ export class InstanceDataUpdater extends InstanceDataPush{
             // checks if the object itself needs to be updated
             let collectorResult = this.typeCollector.get(statement.key, relation[primaryKeyRelation]);
             if (collectorResult) {
-
                 innerCheck = true;
                 let newObj: any = this.transferRelations(keys, relation, collectorResult);
-                relation = new model(newObj);
+                relation = modelStamps.updated(new model(newObj), this.collector.timeStamp);
             }
 
             // we check if any nested relation is updated
@@ -275,7 +293,8 @@ export class InstanceDataUpdater extends InstanceDataPush{
 
         // we need to check if there is new data that should be included after the update
         if (statement.whereStatementController.has()) {
-            let newRelations: any[] = vault.get(statement.origin)
+            let newRelations: any[] = vault
+                .get(statement.origin)
                 .getRelations(statement.key, dataObject[primaryKeyOrigin]).data;
             newRelations = statement.whereStatementController.filter(newRelations);
 
@@ -286,10 +305,12 @@ export class InstanceDataUpdater extends InstanceDataPush{
 
                         check = true;
 
+                        let newModel = modelStamps.added(new model(newRelation), this.collector.timeStamp);
+
                         if (!statement.joinStatementController.has()) {
-                            array.push(new model(newRelation))
+                            array.push(newModel)
                         } else {
-                            array.push(new model(statement.joinStatementController.attach(newRelation)))
+                            array.push(statement.joinStatementController.attach(newModel))
                         }
 
                         continue newRelationLoop;

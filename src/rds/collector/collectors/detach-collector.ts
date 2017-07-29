@@ -62,6 +62,7 @@ export class DetachCollector {
 
 
     public check(target: string, targetId: number, relation: string, relationId: number): boolean {
+
         if (!this.data.hasOwnProperty(target)) return;
         if (!this.data[target].hasOwnProperty(targetId)) return;
         if (!this.data[target][targetId].hasOwnProperty(relation)) return;

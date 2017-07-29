@@ -115,7 +115,10 @@ export class VaultRelation {
     }
 
     public find(id: number): number[] {
-        return this.data.get(id);
+        let result = this.data.get(id);
+        return (result)
+            ? result
+            : []
     }
     //todo maybe we want to put in just the number instead of array when singel relation
     public add(id: number, relation_ids: number | number[]): void {

@@ -5,6 +5,8 @@ import {WhereStatementController} from "./controllers/where-statement-controller
 import {OrderByStatementController} from "./controllers/orderby-statement-controller";
 import {JoinStatementController} from "./controllers/join-statement-controller";
 import {InstanceDataPusherInterface} from "../instance/data/instance-data-pusher.interface";
+import {ModelStamp} from "../model/model-stamp";
+import {modelStamps} from "../model/model-stamps";
 
 export class JoinStatement implements InstanceDataPusherInterface {
 
@@ -82,7 +84,9 @@ export class JoinStatement implements InstanceDataPusherInterface {
         }
 
         if (!this.complicated) {
-            obj[relation.name] = data;
+            obj[relation.name] = (!Array.isArray(data))
+                ? modelStamps.init(data)
+                : data.map(obj => modelStamps.init(obj));
             return obj;
         }
 
@@ -107,7 +111,9 @@ export class JoinStatement implements InstanceDataPusherInterface {
             data = this.orderByStatementController.init(data)
         }
 
-        obj[relation.name] = data;
+        obj[relation.name] = (!Array.isArray(data))
+            ? modelStamps.init(data)
+            : data.map(obj => modelStamps.init(obj));
         return obj;
     }
 

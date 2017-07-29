@@ -10,6 +10,7 @@ import {AddCollector} from "../../../collector/collectors/add-collector";
 import {DetachCollector} from "../../../collector/collectors/detach-collector";
 import {RemoveCollector} from "../../../collector/collectors/remove-collector";
 import {UpdateCollector} from "../../../collector/collectors/update-collector";
+import {modelStamps} from "../../../model/model-stamps";
 
 export abstract class InstanceDataPush {
 
@@ -88,7 +89,7 @@ export abstract class InstanceDataPush {
         if (check) {
             this.collector.setChecked();
             let model: any = vault.get(joinController.origin).model;
-            return new model(newObj);
+            return modelStamps.relationUpdated(new model(newObj), this.collector.timeStamp);
         }
     }
 
@@ -133,7 +134,7 @@ export abstract class InstanceDataPush {
                 // if we push a new object which relations has changed we will have to make a new model of it
                 check = true;
                 let model: any = vault.get(joinController.origin).model;
-                array.push(new model(innerObj));
+                array.push(modelStamps.relationUpdated(new model(innerObj), this.collector.timeStamp));
             }
         }
 
