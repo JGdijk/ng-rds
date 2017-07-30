@@ -18,6 +18,7 @@ export class WhereNotHasStatement implements WhereStatementInterface{
 
     public check(o: any): boolean {
         let r: any = vault.get(this.origin).relations.use(this.key).find(o[this.primaryKey]);
-        return !(r);
+        if (!r) return true;
+        return (r.length === 0);
     }
 }

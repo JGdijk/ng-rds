@@ -33,9 +33,10 @@ export class WhereHasStatement implements WhereStatementInterface{
     }
 
     public check(o: any): boolean {
+        console.log('ben hier');
         let r: any = vault.get(this.origin).relations.use(this.key).find(o[this.primaryKey]);
 
-        if (!r) return;
+        if (!r || r.length === 0) return;
 
         return (this.complicated)
             ? this.checkComplicated(r)
