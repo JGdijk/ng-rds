@@ -14,6 +14,7 @@ Documentation:
 [wiki](https://github.com/jgdijk/ng-rds/wiki)
 
 
+**Feedback is very much appreciated!**
 
 ## Example:
 
